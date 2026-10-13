@@ -1,0 +1,29 @@
+(library
+ (name neobank_api)
+ (public_name neobank-api)
+ (libraries
+  core
+  core_unix
+  core_unix.sys_unix
+  async
+  async_kernel
+  async_websocket
+  cohttp
+  cohttp-async
+  http
+  cryptokit
+  uri
+  yojson
+  zarith
+  ppx_yojson_conv_lib
+  money
+  ledger
+  kyc-core
+  payments-core
+  card-core
+  risk-rules
+  banking-provider
+  pg-async
+  neobank-api-types)
+ (preprocess
+  (pps ppx_jane ppx_yojson_conv)))

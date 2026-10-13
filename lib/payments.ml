@@ -484,7 +484,7 @@ let create_transfer
   | Allow | Challenge ->
     let* (_ : Transfer.t), writes = authorize ctx record ~decision in
     let* () = Ctx.commit ctx writes in
-    let%bind () = ctx.kick () in
+    let%bind () = Ctx.settle ctx in
     let* record = Ctx.find ~what:"transfer" (Any_store.transfer ctx.store draft.id) in
     ok (`Created, Views.transfer record)
 ;;
@@ -704,7 +704,7 @@ let confirm_sca (ctx : Ctx.t) customer id (r : Api_types.Transfer.Confirm_reques
       | None, None ->
         fail (Problem.conflict "nothing_to_confirm" "this transfer waits for no code"))
   in
-  let%bind () = ctx.kick () in
+  let%bind () = Ctx.settle ctx in
   let* record =
     Ctx.find ~what:"transfer" (Any_store.transfer ctx.store (Transfer.id record))
   in
@@ -777,8 +777,12 @@ let initiate (ctx : Ctx.t) id =
          if not authorized
          then Deferred.Or_error.error_s [%message "transfer is not authorized" key]
          else (
+           (* The provider takes the payment as drafted: our SCA bookkeeping
+              (Awaiting_sca) is ours, so it gets the transfer back in Draft, with the
+              authorization recorded. *)
+           let as_drafted = { record.transfer with status = Draft } in
            let%bind answer =
-             Bank.initiate_transfer ctx.bank ~from:record.account record.transfer
+             Bank.initiate_transfer ctx.bank ~from:record.account as_drafted
            in
            let now = Ctx.now ctx in
            let%bind record =
@@ -917,7 +921,7 @@ let decide_review (ctx : Ctx.t) review_id (r : Api_types.Review.Decide_request.t
         push ctx record;
         ok ())
   in
-  let%bind () = ctx.kick () in
+  let%bind () = Ctx.settle ctx in
   let* review = Ctx.find ~what:"review" (Any_store.review ctx.store review_id) in
   ok (Views.review review)
 ;;

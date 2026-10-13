@@ -1,0 +1,15 @@
+(executable
+ (name main)
+ (public_name neobank-api)
+ (package neobank-api)
+ (libraries
+  core
+  async
+  core_unix.command_unix
+  core_unix.sys_unix
+  cohttp-async
+  banking-provider
+  risk-rules
+  neobank-api)
+ (preprocess
+  (pps ppx_jane)))

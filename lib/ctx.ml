@@ -67,6 +67,7 @@ type t =
   ; hub : Hub.t
   ; locks : Keyed_lock.t
   ; mutable kick : unit -> unit Deferred.t
+  ; mutable drain : unit -> unit Deferred.t
   ; provider_challenges :
       (Kyc_core.Customer_id.t * Banking_provider.Sca_challenge.Purpose.t) String.Table.t
   }
@@ -90,11 +91,19 @@ let create
   ; hub = Hub.create ()
   ; locks = Keyed_lock.create ()
   ; kick = (fun () -> return ())
+  ; drain = (fun () -> return ())
   ; provider_challenges = String.Table.create ()
   }
 ;;
 
 let now t = Time_source.now t.time_source
+
+let settle t =
+  let%bind () = t.drain () in
+  let%bind () = t.kick () in
+  t.drain ()
+;;
+
 let read d = Deferred.map d ~f:Problem.of_internal
 
 let find ~what d =

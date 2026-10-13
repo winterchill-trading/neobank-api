@@ -215,11 +215,20 @@ let ingest_webhook (ctx : Ctx.t) request =
        (* A 5xx makes the provider redeliver; the inbox skips what already applied. *)
        return (Error (Problem.internal e))
      | None ->
-       let%bind () = ctx.kick () in
+       let%bind () = Ctx.settle ctx in
        ok (applied, duplicates))
 ;;
 
+let drain () =
+  (* The consumer below reads the provider's pipe in its own Async jobs; once no job is
+     left, every event published so far is queued on the sequencer, behind which this
+     waits. *)
+  let%bind () = Scheduler.yield_until_no_jobs_remain () in
+  Throttle.enqueue sequencer (fun () -> return ())
+;;
+
 let start (ctx : Ctx.t) =
+  ctx.drain <- drain;
   let events = Bank.events ctx.bank in
   don't_wait_for
     (Pipe.iter events ~f:(fun e ->

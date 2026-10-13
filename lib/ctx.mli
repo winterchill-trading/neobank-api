@@ -49,6 +49,8 @@ type t =
   ; locks : Keyed_lock.t
   ; mutable kick : unit -> unit Deferred.t
   (** runs the outbox relay once now; set by {!Relay.start} *)
+  ; mutable drain : unit -> unit Deferred.t
+  (** waits until provider events published so far are applied; set by {!Events.start} *)
   ; provider_challenges :
       (Kyc_core.Customer_id.t * Banking_provider.Sca_challenge.Purpose.t) String.Table.t
   (** open provider challenges answered through [POST /sca/:id], by challenge id: who may
@@ -66,6 +68,11 @@ val create
   -> t
 
 val now : t -> Time_ns.t
+
+(** Lets the effects of a provider call land before answering: applies the events it
+    published, runs the outbox once (for work those events queued), and applies what that
+    published in turn. *)
+val settle : t -> unit Deferred.t
 
 (** A store read; a failure is an internal error. *)
 val read : 'a Or_error.t Deferred.t -> 'a Problem.res

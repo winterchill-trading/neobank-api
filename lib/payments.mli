@@ -26,6 +26,38 @@ open Model
 (** A positive amount in a registered currency. *)
 val parse_amount : Api_types.Amount.t -> Money.Amount.t Or_error.t
 
+(** The customer's name from the KYC case: the payer named in SEPA messages and travel
+    rule records. *)
+val customer_name : Ctx.t -> Customer_id.t -> string Problem.res
+
+(** Rail details for a payment with our id [id]: pacs.008 fields for SEPA (the id is the
+    end-to-end id), a travel-rule record for on-chain, nothing for other rails. *)
+val details
+  :  Ctx.t
+  -> id:string
+  -> rail:Payments_core.Rail.t
+  -> account:Account.t
+  -> beneficiary:Payments_core.Beneficiary.t
+  -> payer:string
+  -> wallet_provider:string option
+  -> reference:string
+  -> Payments_core.Transfer.Details.t option Or_error.t
+
+(** The beneficiary, if the customer owns it; 404 otherwise. *)
+val owned_beneficiary
+  :  Ctx.t
+  -> Customer_id.t
+  -> string
+  -> Payments_core.Beneficiary.t Problem.res
+
+(** A default rail from the account's currency, or the requested one if it reaches the
+    beneficiary. *)
+val pick_rail
+  :  account:Account.t
+  -> beneficiary:Payments_core.Beneficiary.t
+  -> string option
+  -> Payments_core.Rail.t Or_error.t
+
 val beneficiaries : Ctx.t -> Customer_id.t -> Api_types.Beneficiary.t list Problem.res
 
 val add_beneficiary

@@ -1,0 +1,7 @@
+_build/
+_build-*/
+_opam/
+*.install
+.merlin
+.env
+state/

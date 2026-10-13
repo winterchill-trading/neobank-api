@@ -145,7 +145,13 @@ let apply t (w : Write.t) =
       Hashtbl.set t.provider_refs ~key:(Customer_ref.to_string r) ~data:(cid c.id))
   | Put_session s -> Hashtbl.set t.sessions ~key:s.token_hash ~data:s
   | Delete_session { token_hash } -> Hashtbl.remove t.sessions token_hash
-  | Kyc_event e -> Hashtbl.add_multi t.kyc ~key:(cid e.customer_id) ~data:e
+  | Kyc_event e ->
+    (* An event id is appended once per customer, like the unique key in Postgres. *)
+    if not
+         (List.exists
+            (Hashtbl.find_multi t.kyc (cid e.customer_id))
+            ~f:(fun old -> Kyc_core.Event_id.equal old.id e.id))
+    then Hashtbl.add_multi t.kyc ~key:(cid e.customer_id) ~data:e
   | Put_account a ->
     Hashtbl.set t.accounts ~key:(Account_ref.to_string (Account.id a)) ~data:a
   | Put_beneficiary b ->
@@ -214,9 +220,12 @@ let accounts t id =
     (Hashtbl.data t.accounts
      |> List.filter ~f:(fun (a : Account.t) -> Customer_id.equal a.customer id)
      |> List.sort ~compare:(fun a b ->
+       (* Byte order of the text forms, as Postgres sorts with COLLATE "C". *)
        Comparable.lift
-         [%compare: Money.Currency.t * Account_ref.t]
-         ~f:(fun a -> Account.currency a, Account.id a)
+         [%compare: string * string]
+         ~f:(fun a ->
+           ( Money.Currency.to_string (Account.currency a)
+           , Account_ref.to_string (Account.id a) ))
          a
          b))
 ;;

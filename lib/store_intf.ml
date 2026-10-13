@@ -23,7 +23,8 @@ module Write = struct
     | Update_customer of Customer.t
     | Put_session of Session.t
     | Delete_session of { token_hash : string }
-    | Kyc_event of Kyc_core.Event.t (** appended to the customer's case *)
+    | Kyc_event of Kyc_core.Event.t
+    (** appended to the customer's case; an event id already there is skipped *)
     | Put_account of Account.t
     | Put_beneficiary of Payments_core.Beneficiary.t
     | Put_transfer of Transfer.t
@@ -87,7 +88,7 @@ module type S = sig
 
   val account : t -> Account_ref.t -> Account.t option Or_error.t Deferred.t
 
-  (** Ordered by currency. *)
+  (** Ordered by currency code (byte order), then id. *)
   val accounts : t -> Customer_id.t -> Account.t list Or_error.t Deferred.t
 
   val beneficiary

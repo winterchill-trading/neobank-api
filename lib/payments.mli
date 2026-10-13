@@ -23,6 +23,9 @@ open Async
 open Neobank_api_types
 open Model
 
+(** A positive amount in a registered currency. *)
+val parse_amount : Api_types.Amount.t -> Money.Amount.t Or_error.t
+
 val beneficiaries : Ctx.t -> Customer_id.t -> Api_types.Beneficiary.t list Problem.res
 
 val add_beneficiary

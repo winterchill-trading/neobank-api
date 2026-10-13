@@ -251,6 +251,9 @@ module Transfer : sig
       ; amount : Amount.t
       ; rail : string option
       ; reference : string option
+      ; wallet_provider : string option
+      (** crypto only: who hosts the destination wallet (travel rule); absent means a
+          self-hosted wallet *)
       }
     [@@deriving sexp, compare, equal, yojson]
   end
@@ -399,6 +402,60 @@ module Review : sig
     ; operator : string option
     }
   [@@deriving sexp, compare, equal, yojson]
+end
+
+(** Simulations, served only when the provider has a sandbox (the fake does). *)
+module Sandbox : sig
+  module Kyc_decision : sig
+    (** [decision]: [approve], [reject] (with [reason]) or [resubmit]. *)
+    type t =
+      { decision : string
+      ; reason : string option
+      }
+    [@@deriving sexp, compare, equal, yojson]
+  end
+
+  module Deposit : sig
+    (** An incoming payment; [rail] defaults to SEPA Instant for EUR and on-chain for
+        crypto. *)
+    type t =
+      { account_id : string
+      ; amount : Amount.t
+      ; rail : string option
+      }
+    [@@deriving sexp, compare, equal, yojson]
+  end
+
+  module Card_auth : sig
+    (** A card-not-present purchase at [merchant]. *)
+    type t =
+      { card_id : string
+      ; merchant : string
+      ; mcc : int
+      ; country : string
+      ; amount : Amount.t
+      }
+    [@@deriving sexp, compare, equal, yojson]
+  end
+
+  module Card_auth_result : sig
+    type t =
+      { response_code : string
+      ; approved : bool
+      }
+    [@@deriving sexp, compare, equal, yojson]
+  end
+
+  module Transfer_outcome : sig
+    (** [outcome]: [settled], [rejected] or [returned] (with an ISO [reason] code such as
+        [AC04]). *)
+    type t =
+      { transfer_id : string
+      ; outcome : string
+      ; reason : string option
+      }
+    [@@deriving sexp, compare, equal, yojson]
+  end
 end
 
 module Ws_push : sig

@@ -245,6 +245,7 @@ module Transfer = struct
       ; amount : Amount.t
       ; rail : string option [@default None] [@yojson_drop_if Option.is_none]
       ; reference : string option [@default None] [@yojson_drop_if Option.is_none]
+      ; wallet_provider : string option [@default None] [@yojson_drop_if Option.is_none]
       }
     [@@deriving sexp, compare, equal, yojson] [@@yojson.allow_extra_fields]
   end
@@ -395,6 +396,53 @@ module Review = struct
     ; operator : string option [@default None] [@yojson_drop_if Option.is_none]
     }
   [@@deriving sexp, compare, equal, yojson] [@@yojson.allow_extra_fields]
+end
+
+module Sandbox = struct
+  module Kyc_decision = struct
+    type t =
+      { decision : string
+      ; reason : string option [@default None] [@yojson_drop_if Option.is_none]
+      }
+    [@@deriving sexp, compare, equal, yojson] [@@yojson.allow_extra_fields]
+  end
+
+  module Deposit = struct
+    type t =
+      { account_id : string
+      ; amount : Amount.t
+      ; rail : string option [@default None] [@yojson_drop_if Option.is_none]
+      }
+    [@@deriving sexp, compare, equal, yojson] [@@yojson.allow_extra_fields]
+  end
+
+  module Card_auth = struct
+    type t =
+      { card_id : string
+      ; merchant : string
+      ; mcc : int
+      ; country : string
+      ; amount : Amount.t
+      }
+    [@@deriving sexp, compare, equal, yojson] [@@yojson.allow_extra_fields]
+  end
+
+  module Card_auth_result = struct
+    type t =
+      { response_code : string
+      ; approved : bool
+      }
+    [@@deriving sexp, compare, equal, yojson] [@@yojson.allow_extra_fields]
+  end
+
+  module Transfer_outcome = struct
+    type t =
+      { transfer_id : string
+      ; outcome : string
+      ; reason : string option [@default None] [@yojson_drop_if Option.is_none]
+      }
+    [@@deriving sexp, compare, equal, yojson] [@@yojson.allow_extra_fields]
+  end
 end
 
 module Ws_push = struct

@@ -41,7 +41,7 @@ let kyc_decision (ctx : Ctx.t) customer (r : Api_types.Sandbox.Kyc_decision.t) =
   in
   let* () = provider (Bank.simulate_kyc_decision ctx.bank provider_ref decision) in
   (* The decision arrives as events; let them land before answering. *)
-  let%bind () = ctx.kick () in
+  let%bind () = Ctx.settle ctx in
   Onboarding.status ctx customer
 ;;
 
@@ -65,7 +65,7 @@ let deposit (ctx : Ctx.t) customer (r : Api_types.Sandbox.Deposit.t) =
   let* id =
     provider (Bank.simulate_deposit ctx.bank ~account:(Account.id account) ~rail amount)
   in
-  let%bind () = ctx.kick () in
+  let%bind () = Ctx.settle ctx in
   ok (Payments_core.Transfer.Id.to_string id)
 ;;
 
@@ -124,6 +124,6 @@ let transfer_outcome (ctx : Ctx.t) customer (r : Api_types.Sandbox.Transfer_outc
          (Payments_core.Transfer.Id.of_string r.transfer_id)
          update)
   in
-  let%bind () = ctx.kick () in
+  let%bind () = Ctx.settle ctx in
   Payments.get_transfer ctx customer r.transfer_id
 ;;

@@ -56,7 +56,7 @@ let confirm (ctx : Ctx.t) customer id (r : Api_types.Sca_confirm_request.t) =
          | Standing_order r -> Standing_orders.challenge_accepted ctx r
          | Card_details _ | Transfer _ -> ok ()
        in
-       let%bind () = ctx.kick () in
+       let%bind () = Ctx.settle ctx in
        ok `Accepted
      | Wrong_code { attempts_left } ->
        fail

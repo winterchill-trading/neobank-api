@@ -92,7 +92,7 @@ let create (ctx : Ctx.t) (s : Session.t) (r : Api_types.Standing_order.Request.t
           ()
       ]
   in
-  let%bind () = ctx.kick () in
+  let%bind () = Ctx.settle ctx in
   let* record =
     Ctx.find ~what:"standing order" (Any_store.standing_order ctx.store order.id)
   in

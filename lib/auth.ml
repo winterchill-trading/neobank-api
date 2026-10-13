@@ -134,7 +134,7 @@ let signup (ctx : Ctx.t) (r : Api_types.Auth.Signup_request.t) =
       ]
   in
   Metrics.incr ctx.metrics "signups";
-  let%bind () = ctx.kick () in
+  let%bind () = Ctx.settle ctx in
   ok
     { Api_types.Auth.Signup_response.customer_id = Customer_id.to_string id
     ; totp_secret = Totp.base32_encode secret

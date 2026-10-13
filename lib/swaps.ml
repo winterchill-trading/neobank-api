@@ -83,7 +83,7 @@ let execute (ctx : Ctx.t) (session : Session.t) id =
         ok swap
       | Executing | Awaiting_sca | Executed | Failed _ -> ok swap)
   in
-  let%bind () = ctx.kick () in
+  let%bind () = Ctx.settle ctx in
   let* swap = owned ctx session.customer (P.Swap.Id.to_string swap.id) in
   ok (Views.swap swap)
 ;;

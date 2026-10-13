@@ -27,3 +27,12 @@
   neobank-api-types)
  (preprocess
   (pps ppx_jane ppx_yojson_conv)))
+
+(rule
+ (targets embedded_migrations.ml)
+ (deps
+  (glob_files %{project_root}/migrations/*.sql))
+ (action
+  (with-stdout-to
+   %{targets}
+   (run gen/gen_migrations.exe %{deps}))))

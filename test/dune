@@ -1,0 +1,27 @@
+(library
+ (name neobank_api_test)
+ (libraries
+  neobank-api
+  neobank-api-types
+  core
+  core_unix
+  core_unix.filename_unix
+  async
+  async_kernel
+  cryptokit
+  yojson
+  money
+  ledger
+  kyc-core
+  payments-core
+  card-core
+  risk-rules
+  banking-provider
+  pg-async
+  pg-async.testing
+  expect_test_helpers_core)
+ (inline_tests
+  (flags
+   (:standard -source-tree-root .)))
+ (preprocess
+  (pps ppx_jane)))

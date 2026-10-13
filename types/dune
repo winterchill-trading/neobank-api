@@ -1,0 +1,6 @@
+(library
+ (name neobank_api_types)
+ (public_name neobank-api-types)
+ (libraries core yojson ppx_yojson_conv_lib)
+ (preprocess
+  (pps ppx_jane ppx_yojson_conv)))

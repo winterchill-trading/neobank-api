@@ -67,6 +67,8 @@ type t =
   ; hub : Hub.t
   ; locks : Keyed_lock.t
   ; mutable kick : unit -> unit Deferred.t
+  ; provider_challenges :
+      (Kyc_core.Customer_id.t * Banking_provider.Sca_challenge.Purpose.t) String.Table.t
   }
 
 let create
@@ -88,6 +90,7 @@ let create
   ; hub = Hub.create ()
   ; locks = Keyed_lock.create ()
   ; kick = (fun () -> return ())
+  ; provider_challenges = String.Table.create ()
   }
 ;;
 

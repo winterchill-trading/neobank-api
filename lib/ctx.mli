@@ -49,6 +49,10 @@ type t =
   ; locks : Keyed_lock.t
   ; mutable kick : unit -> unit Deferred.t
   (** runs the outbox relay once now; set by {!Relay.start} *)
+  ; provider_challenges :
+      (Kyc_core.Customer_id.t * Banking_provider.Sca_challenge.Purpose.t) String.Table.t
+  (** open provider challenges answered through [POST /sca/:id], by challenge id: who may
+      answer each and what it is for. In memory: after a restart the customer asks again. *)
   }
 
 val create

@@ -30,24 +30,70 @@ type t =
       ; fake : Fake_provider.t option
       ; journal : Ledger.Journal.t option
       ; card_ui : Card_ui.t option
+      ; checkpoint : unit -> unit
       ; on_close : unit -> unit
       }
       -> t
 
 let of_provider impl ?sandbox ?card_ui provider =
-  T { impl; sandbox; provider; fake = None; journal = None; card_ui; on_close = Fn.id }
+  T
+    { impl
+    ; sandbox
+    ; provider
+    ; fake = None
+    ; journal = None
+    ; card_ui
+    ; checkpoint = Fn.id
+    ; on_close = Fn.id
+    }
+;;
+
+(* The fake's id counters, saved next to its journal. A restored counter starts
+   [counter_margin] past the saved value: saves happen after events and on every relay
+   pass, so ids handed out after the last save are skipped, never reissued. *)
+let counters_file state_dir = state_dir ^/ "fake-counters.sexp"
+let counter_margin = 1000
+
+let load_counters state_dir =
+  let path = counters_file state_dir in
+  match Sys_unix.file_exists path with
+  | `No | `Unknown -> Ok []
+  | `Yes ->
+    Or_error.try_with (fun () ->
+      Core.Sexp.load_sexp_conv_exn path [%of_sexp: (string * int) list]
+      |> List.map ~f:(fun (prefix, n) -> prefix, n + counter_margin))
+    |> Or_error.tag ~tag:path
+;;
+
+let save_counters state_dir counters =
+  let path = counters_file state_dir in
+  let tmp = path ^ ".tmp" in
+  (* A few hundred bytes, written synchronously so the save is complete when the call
+     returns. *)
+  Core.Sexp.save_hum tmp [%sexp (counters : (string * int) list)];
+  Core_unix.rename ~src:tmp ~dst:path
 ;;
 
 let fake ?config ~time_source ~state_dir () =
   let open Or_error.Let_syntax in
   let%bind () = Or_error.try_with (fun () -> Core_unix.mkdir_p state_dir) in
+  let%bind counters = load_counters state_dir in
   let path = state_dir ^/ "journal" in
   let%bind journal =
     match Sys_unix.file_exists path with
     | `Yes -> Ledger.Journal.open_ ~time_source path
     | `No | `Unknown -> Ledger.Journal.create ~time_source path
   in
-  let%map provider = Fake_provider.create ?config ~time_source ~journal () in
+  let%map provider = Fake_provider.create ?config ~counters ~time_source ~journal () in
+  let saved = ref counters in
+  let checkpoint () =
+    let now = Fake_provider.counters provider in
+    if not ([%equal: (string * int) list] now !saved)
+    then (
+      save_counters state_dir now;
+      saved := now)
+  in
+  checkpoint ();
   T
     { impl = (module Fake_provider)
     ; sandbox = Some (module Fake_provider)
@@ -55,11 +101,16 @@ let fake ?config ~time_source ~state_dir () =
     ; fake = Some provider
     ; journal = Some journal
     ; card_ui = None
-    ; on_close = (fun () -> Ledger.Journal.close journal)
+    ; checkpoint
+    ; on_close =
+        (fun () ->
+          checkpoint ();
+          Ledger.Journal.close journal)
     }
 ;;
 
 let as_fake (T t) = t.fake
+let checkpoint (T t) = t.checkpoint ()
 let journal (T t) = t.journal
 let name (T { impl = (module P); provider; _ }) = P.name provider
 let has_sandbox (T t) = Option.is_some t.sandbox

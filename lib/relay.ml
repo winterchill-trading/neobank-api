@@ -66,6 +66,7 @@ let pass (ctx : Ctx.t) =
     return ()
   | Ok messages ->
     let%bind () = Deferred.List.iter ~how:`Sequential messages ~f:(process ctx) in
+    Bank.checkpoint ctx.bank;
     (match%map Ledger_projection.catch_up ctx with
      | Ok (_ : int) -> ()
      | Error e -> Log.Global.error_s [%message "ledger projection failed" (e : Error.t)])

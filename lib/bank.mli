@@ -43,8 +43,11 @@ val of_provider
   -> t
 
 (** The deterministic fake over a ledger journal at [state_dir/journal] (created, or
-    reopened when it exists), with [time_source] for its clock. The journal is the books
-    of the simulated bank: every simulated movement is booked there. *)
+    reopened when it exists), with [time_source] for its clock. Its id counters are
+    restored from [state_dir/fake-counters.sexp], so a restarted fake does not hand out
+    [cus_000001] again (see {!checkpoint}). Customers and accounts the fake held in memory
+    are still gone after a restart; only new ids are safe. The journal is the books of the
+    simulated bank: every simulated movement is booked there. *)
 val fake
   :  ?config:Fake_provider.Config.t
   -> time_source:[> read ] Time_source.T1.t
@@ -55,6 +58,12 @@ val fake
 (** The ledger journal the bank books into, when the API keeps it (the fake's books);
     {!Ledger_projection} copies it into the store for queries. *)
 val journal : t -> Ledger.Journal.t option
+
+(** Saves what must survive a restart: for the fake, its id counters
+    ([state_dir/fake-counters.sexp]; restored with a margin of 1000 so ids issued after
+    the last save are skipped, never reissued). Nothing for other providers. Called after
+    every applied event, on every relay pass and on {!close}. *)
+val checkpoint : t -> unit
 
 (** The fake's own handle, when the bank is the fake (tests, demo tools). *)
 val as_fake : t -> Fake_provider.t option

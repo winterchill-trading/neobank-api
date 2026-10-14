@@ -174,6 +174,7 @@ let apply (ctx : Ctx.t) (e : E.t) =
            let inbox = Model.Inbox_entry.of_event e ~received_at:(Ctx.now ctx) in
            (match%map Any_store.commit ctx.store (Store.Write.Inbox inbox :: writes) with
             | Ok Committed ->
+              Bank.checkpoint ctx.bank;
               Metrics.incr ctx.metrics "events_applied" ~labels:[ "kind", kind ];
               after ();
               Ok `Applied

@@ -18,7 +18,7 @@
   risk-rules
   banking-provider
   pg-async
-  pg-async.testing
+  pg-async.testing)
  (inline_tests
   (flags
    (:standard -source-tree-root .)))

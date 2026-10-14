@@ -2,6 +2,26 @@ open! Core
 open Async
 open Banking_provider
 
+module Card_ui = struct
+  type display =
+    { provider : string
+    ; script_url : string option
+    ; application_id : string option
+    ; ui_secret : Sensitive.t option
+    ; user_id : string option
+    ; card_id : string
+    }
+  [@@deriving sexp_of]
+
+  type t =
+    { display : Card_core.Ids.Card_id.t -> display Or_error.t Deferred.t
+    ; consent_started :
+        Card_core.Ids.Card_id.t
+        -> challenge_id:string
+        -> Sca_challenge.t Or_error.t Deferred.t
+    }
+end
+
 type t =
   | T :
       { impl : (module Provider.S with type t = 'a)
@@ -9,12 +29,13 @@ type t =
       ; provider : 'a
       ; fake : Fake_provider.t option
       ; journal : Ledger.Journal.t option
+      ; card_ui : Card_ui.t option
       ; on_close : unit -> unit
       }
       -> t
 
-let of_provider impl ?sandbox provider =
-  T { impl; sandbox; provider; fake = None; journal = None; on_close = Fn.id }
+let of_provider impl ?sandbox ?card_ui provider =
+  T { impl; sandbox; provider; fake = None; journal = None; card_ui; on_close = Fn.id }
 ;;
 
 let fake ?config ~time_source ~state_dir () =
@@ -33,6 +54,7 @@ let fake ?config ~time_source ~state_dir () =
     ; provider
     ; fake = Some provider
     ; journal = Some journal
+    ; card_ui = None
     ; on_close = (fun () -> Ledger.Journal.close journal)
     }
 ;;
@@ -145,4 +167,30 @@ let simulate_transfer_outcome (T t as bank) id update =
   match t.sandbox with
   | Some (module S) -> S.simulate_transfer_outcome t.provider id update
   | None -> no_sandbox bank
+;;
+
+let card_display (T t as bank) id =
+  match t.card_ui with
+  | Some ui -> ui.display id
+  | None ->
+    return
+      (Ok
+         { Card_ui.provider = name bank
+         ; script_url = None
+         ; application_id = None
+         ; ui_secret = None
+         ; user_id = None
+         ; card_id = Card_core.Ids.Card_id.to_string id
+         })
+;;
+
+let card_consent_started (T t as bank) id ~challenge_id =
+  match t.card_ui with
+  | Some ui -> ui.consent_started id ~challenge_id
+  | None ->
+    (match%map card_details_token bank id with
+     | Error _ as e -> e
+     | Ok (Challenge c) -> Ok c
+     | Ok (Done _) ->
+       Or_error.error_string "this card needs no consent; ask for the token")
 ;;

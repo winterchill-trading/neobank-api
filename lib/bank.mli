@@ -12,9 +12,33 @@ open Payments_core
 
 type t
 
+(** How a provider's hosted card-number component is driven from the browser: the options
+    it is created with, and the consent challenge it starts. Not part of {!Provider.S}
+    because it is browser-side and provider-specific. *)
+module Card_ui : sig
+  type display =
+    { provider : string
+    ; script_url : string option
+    ; application_id : string option
+    ; ui_secret : Sensitive.t option (** for the browser component only *)
+    ; user_id : string option
+    ; card_id : string
+    }
+  [@@deriving sexp_of]
+
+  type t =
+    { display : Card_core.Ids.Card_id.t -> display Or_error.t Deferred.t
+    ; consent_started :
+        Card_core.Ids.Card_id.t
+        -> challenge_id:string
+        -> Sca_challenge.t Or_error.t Deferred.t
+    }
+end
+
 val of_provider
   :  (module Provider.S with type t = 'a)
   -> ?sandbox:(module Sandbox.S with type t = 'a)
+  -> ?card_ui:Card_ui.t
   -> 'a
   -> t
 
@@ -143,6 +167,18 @@ val create_standing_order
   -> from:Account_ref.t
   -> Standing_order.t
   -> Standing_order_ref.t Sca_challenge.Or_challenge.t Or_error.t Deferred.t
+
+(** The provider's component options; without a {!Card_ui}, just the provider's name and
+    the card id (the fake shows nothing in a browser). *)
+val card_display : t -> Card_core.Ids.Card_id.t -> Card_ui.display Or_error.t Deferred.t
+
+(** The challenge behind a consent the browser component started; without a {!Card_ui},
+    the challenge {!card_details_token} asks for, if any. *)
+val card_consent_started
+  :  t
+  -> Card_core.Ids.Card_id.t
+  -> challenge_id:string
+  -> Sca_challenge.t Or_error.t Deferred.t
 
 val cancel_standing_order : t -> Standing_order_ref.t -> unit Or_error.t Deferred.t
 val events : t -> Event.t Pipe.Reader.t

@@ -38,6 +38,12 @@ module Write = struct
     | Inbox of Inbox_entry.t
     (** the batch is a [Duplicate_event] when this event id was applied before *)
     | Audit of Audit.Record.t (** appended to the hash chain *)
+    | Provider_link of
+        { kind : string
+        ; key : string
+        ; value : string
+        ; at : Utc_time.Stable.V1.t
+        } (** what a provider adapter must remember, by kind and key; replaces *)
     | Ledger_record of Ledger.Record.t
     (** a journal record and its postings, projected for queries; a sequence number
         already projected is skipped *)
@@ -182,6 +188,14 @@ module type S = sig
   (** Forgets a key whose request was not executed (it failed validation), so a corrected
       retry may use it. *)
   val idempotency_abandon : t -> Idempotency.Scope.t -> unit Or_error.t Deferred.t
+
+  (** {2 Provider links} *)
+
+  val provider_link
+    :  t
+    -> kind:string
+    -> key:string
+    -> string option Or_error.t Deferred.t
 
   (** {2 Ledger projection} *)
 

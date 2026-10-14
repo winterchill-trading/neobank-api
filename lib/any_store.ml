@@ -39,6 +39,7 @@ let idempotency_begin (T ((module S), s)) = S.idempotency_begin s
 let idempotency_complete (T ((module S), s)) = S.idempotency_complete s
 let idempotency_abandon (T ((module S), s)) = S.idempotency_abandon s
 let audit_log (T ((module S), s)) = S.audit_log s
+let provider_link (T ((module S), s)) = S.provider_link s
 let ledger_head (T ((module S), s)) = S.ledger_head s
 let ledger_postings (T ((module S), s)) = S.ledger_postings s
 let ledger_trial_balance (T ((module S), s)) = S.ledger_trial_balance s

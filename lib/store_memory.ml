@@ -36,6 +36,7 @@ type t =
   ; idempotency : idem String.Table.t
   ; mutable audit : Audit.t list (* newest first *)
   ; ledger : Ledger_posting.t list Int.Table.t (* by journal seq *)
+  ; links : string String.Table.t (* by "<kind> <key>" *)
   ; mutable seq : int
   }
 
@@ -60,6 +61,7 @@ let create () =
   ; idempotency = String.Table.create ()
   ; audit = []
   ; ledger = Int.Table.create ()
+  ; links = String.Table.create ()
   ; seq = 0
   }
 ;;
@@ -136,6 +138,7 @@ let check t writes =
       | Put_review _
       | Enqueue _
       | Audit _
+      | Provider_link _
       | Ledger_record _ -> Continue ())
 ;;
 
@@ -178,6 +181,8 @@ let apply t (w : Write.t) =
   | Enqueue m | Update_outbox m -> put_aged t t.outbox m.id m
   | Inbox e ->
     Hashtbl.set t.inbox ~key:(Banking_provider.Event_id.to_string e.event_id) ~data:e
+  | Provider_link { kind; key; value; at = _ } ->
+    Hashtbl.set t.links ~key:(kind ^ " " ^ key) ~data:value
   | Ledger_record r ->
     if not (Hashtbl.mem t.ledger r.seq)
     then Hashtbl.set t.ledger ~key:r.seq ~data:(Ledger_posting.of_record r)
@@ -352,6 +357,7 @@ let idempotency_abandon t scope =
 ;;
 
 let audit_log t = found (List.rev t.audit)
+let provider_link t ~kind ~key = found (Hashtbl.find t.links (kind ^ " " ^ key))
 
 let ledger_head t =
   found

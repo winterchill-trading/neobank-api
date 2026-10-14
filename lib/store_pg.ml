@@ -348,6 +348,14 @@ let apply_write conn (w : Write.t) : (unit, stop) Result.t Deferred.t =
              [%message
                "provider event id reused with different content"
                  ~event_id:(e.event_id : Banking_provider.Event_id.t)]))
+  | Provider_link { kind; key; value; at } ->
+    exec
+      conn
+      "INSERT INTO provider_links (kind, key, value, updated_at) VALUES ($1, $2, $3, $4) \
+       ON CONFLICT (kind, key) DO UPDATE SET value = EXCLUDED.value, updated_at = \
+       EXCLUDED.updated_at"
+      [ Param.string kind; Param.string key; Param.bytea value; utc at ]
+    |> ignore_count
   | Ledger_record r ->
     let%bind n =
       exec
@@ -766,6 +774,14 @@ let idempotency_abandon t scope =
           t.pool
           "DELETE FROM idempotency WHERE scope = $1"
           ~params:[ Param.string (Idempotency.Scope.to_string scope) ]))
+;;
+
+let provider_link t ~kind ~key =
+  fetch_opt
+    t
+    "SELECT value FROM provider_links WHERE kind = $1 AND key = $2"
+    ~params:[ Param.string kind; Param.string key ]
+    ~row:Row.(column "value" Type.bytea)
 ;;
 
 let ledger_head t =

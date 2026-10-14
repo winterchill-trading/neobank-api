@@ -106,6 +106,9 @@ Every `POST` except `/auth/*` and `/webhooks/*` needs an `Idempotency-Key` heade
    On-chain payments of more than EUR 1000 to a self-hosted wallet are refused until the
    customer proves control of it (travel rule); naming the provider that hosts the
    wallet (`wallet_provider`) records it as hosted.
+   On-chain payments of more than EUR 1000 to a self-hosted wallet are refused until the
+   customer proves control of it (travel rule); naming the provider that hosts the
+   wallet (`wallet_provider`) records it as hosted.
    The context and the decision are stored with the transfer, so the decision can be
    replayed.
 2. `Block`: refused (422 `payment_refused`, with risk-rules' customer message), stored
@@ -195,6 +198,9 @@ clusters (`brew install postgresql@18`, or `apt-get install postgresql`).
 | PBKDF2, TOTP, base32 | RFC 7914, RFC 6238 and RFC 4648 vectors |
 | Store behaviour | one transcript, memory and PostgreSQL |
 | The HTTP walk (all routes above, idempotency, wrong factors, review, refusal, stale SCA, webhook redelivery and forgery, standing order run, ledger balance) | fake provider, memory and PostgreSQL |
+| Crypto: BTC and ETH on-chain with travel-rule records, Lightning, the EUR 1000 self-hosted wallet rule | fake provider |
+| Sign-up validation, login failures, the SCA lock, authenticator code replay | fake provider |
+| Outbox backoff and the give-up to operator review | fake provider |
 | Crypto: BTC and ETH on-chain with travel-rule records, Lightning, the EUR 1000 self-hosted wallet rule | fake provider |
 | Sign-up validation, login failures, the SCA lock, authenticator code replay | fake provider |
 | Outbox backoff and the give-up to operator review | fake provider |

@@ -86,7 +86,7 @@ The full table with bodies is the comment at the top of `lib/server.mli`; bodies
 | Accounts | `GET /accounts`, `/accounts/:id`, `/accounts/:id/statement?from=&until=&format=csv` |
 | Payments | `GET/POST /beneficiaries`, `POST /beneficiaries/:id/trust`, `POST /transfers/quote`, `POST /transfers`, `GET /transfers[/:id]`, `POST /transfers/:id/confirm-sca`, `/sca`, `/cancel` |
 | Swaps | `POST /swaps/quote`, `POST /swaps/:id/execute`, `GET /swaps[/:id]` |
-| Cards | `GET/POST /cards`, `POST /cards/:id/freeze`, `/unfreeze`, `/limits`, `/pan-token` |
+| Cards | `GET/POST /cards`, `POST /cards/:id/freeze`, `/unfreeze`, `/limits`, `/pan-token`, `/consent`, `GET /cards/:id/display` |
 | Standing orders | `GET/POST /standing-orders`, `DELETE /standing-orders/:id` |
 | Provider codes | `POST /sca/:id` (the provider's own challenge for a swap, order or card number) |
 | Pushes | `GET /ws?token=...` (`{"type": "transfer" | "account" | "kyc" | "card" | "swap" | "standing_order", "data": ...}`) |
@@ -209,12 +209,17 @@ clusters (`brew install postgresql@18`, or `apt-get install postgresql`).
 | DORA classification and deadlines | expect tests |
 | The curl walk | CI, against the binary, memory and PostgreSQL |
 
-Nothing is verified live yet: the Striga path runs only through `striga-provider`'s own
-tests until `-provider striga` is wired (see Known gaps).
+Nothing is verified live: the Striga path runs only through `striga-provider`'s own
+tests (see Known gaps); `-provider striga` was checked to start and to refuse cleanly
+without `STRIGA_*`.
 
 ## Known gaps
 
-- `-provider striga` is not linked yet; it waits for `striga-provider` to settle.
+- `-provider striga` is written and compiles (branch `striga-provider`: the adapter
+  over striga-provider with its links in `provider_links` and the card component's
+  options from `STRIGA_*`), but is not on `main`: the pushed striga-provider still
+  includes `Provider.Sandbox`, which banking-provider renamed to `Sandbox.S`. Merge the
+  branch once striga-provider follows.
 - KYC screening and risk rating are not run by the API: the demo KYC policy trusts the
   provider's decision for them (`Ctx.Config.demo_kyc_policy`).
 - Personal data in KYC events is stored as Bin_prot without per-customer encryption.

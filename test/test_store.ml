@@ -68,6 +68,9 @@ let%expect_test "memory store" =
        ((3 1 DEPOSIT Credit "100.00 EUR" "2026-10-14 09:00:01Z")
         (4 1 DEPOSIT Credit "25.50 EUR" "2026-10-14 09:00:02Z")))
       (trial ("0.00 EUR"))))
+    (link (Ok Committed))
+    ("link again" (Ok Committed))
+    (links ((found (user-2)) (other ())))
     (pruned ((idempotency_keys 2) (inbox_rows 1) (sessions 0)))
     ("inbox has e1 after pruning" false)
     |}];
@@ -140,6 +143,9 @@ let%expect_test "postgres store: the same transcript" =
        ((3 1 DEPOSIT Credit "100.00 EUR" "2026-10-14 09:00:01Z")
         (4 1 DEPOSIT Credit "25.50 EUR" "2026-10-14 09:00:02Z")))
       (trial ("0.00 EUR"))))
+    (link (Ok Committed))
+    ("link again" (Ok Committed))
+    (links ((found (user-2)) (other ())))
     (pruned ((idempotency_keys 2) (inbox_rows 1) (sessions 0)))
     ("inbox has e1 after pruning" false)
     |}];
@@ -157,6 +163,6 @@ let%expect_test "postgres store: migrations apply once" =
         ~second:(Store_pg.applied_migrations second : int list)];
   let%bind () = Store_pg.close first in
   let%bind () = Store_pg.close second in
-  [%expect {| ((first (1 2)) (second ())) |}];
+  [%expect {| ((first (1 2 3)) (second ())) |}];
   return ()
 ;;

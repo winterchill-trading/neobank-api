@@ -426,6 +426,15 @@ let run (type a) (module S : Store.S with type t = a) (store : a) =
            : (int * int * string * Ledger.Side.t * string * Payments_core.Utc_time.t) list)
       ; trial = (List.map trial ~f:Money.Amount.to_string : string list)
       }];
+  (* Provider links: opaque bytes by kind and key, replaced on write. *)
+  let link value : Store.Write.t =
+    Provider_link { kind = "customer"; key = "c1"; value; at = start }
+  in
+  let%bind () = commit "link" [ link "user-1\000bytes" ] in
+  let%bind () = commit "link again" [ link "user-2" ] in
+  let%bind found = ok (S.provider_link store ~kind:"customer" ~key:"c1") in
+  let%bind other = ok (S.provider_link store ~kind:"transfer" ~key:"c1") in
+  show "links" [%sexp { found : string option; other : string option }];
   (* Pruning *)
   let%bind pruned =
     ok

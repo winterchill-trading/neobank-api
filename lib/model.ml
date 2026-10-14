@@ -274,6 +274,12 @@ module Review = struct
               { operator : string
               ; at : Utc_time.Stable.V1.t
               }
+          | First_approval of
+              { operator : string
+              ; at : Utc_time.Stable.V1.t
+              }
+          (** releasing a held payment takes two different operators (four eyes); a single
+              one may reject *)
         [@@deriving bin_io, sexp, compare, equal]
       end
     end
@@ -300,7 +306,7 @@ module Review = struct
 
   let is_pending t =
     match t.status with
-    | Pending -> true
+    | Pending | First_approval _ -> true
     | Approved _ | Rejected _ -> false
   ;;
 end

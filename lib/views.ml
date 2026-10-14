@@ -324,11 +324,14 @@ let review (r : Review.t) =
   ; status =
       (match r.status with
        | Pending -> "pending"
+       | First_approval _ -> "awaiting_second_approval"
        | Approved _ -> "approved"
        | Rejected _ -> "rejected")
   ; operator =
       (match r.status with
        | Pending -> None
-       | Approved { operator; _ } | Rejected { operator; _ } -> Some operator)
+       | Approved { operator; _ }
+       | Rejected { operator; _ }
+       | First_approval { operator; _ } -> Some operator)
   }
 ;;

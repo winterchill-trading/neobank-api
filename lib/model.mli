@@ -287,6 +287,12 @@ module Review : sig
               { operator : string
               ; at : Utc_time.Stable.V1.t
               }
+          | First_approval of
+              { operator : string
+              ; at : Utc_time.Stable.V1.t
+              }
+          (** releasing a held payment takes two different operators (four eyes); a single
+              one may reject *)
         [@@deriving bin_io, sexp, compare, equal]
       end
     end
@@ -315,6 +321,7 @@ module Review : sig
     include Stable.V1
   end
 
+  (** Not decided yet: [Pending] or [First_approval]. *)
   val is_pending : t -> bool
 end
 

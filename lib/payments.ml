@@ -904,8 +904,21 @@ let decide_review (ctx : Ctx.t) review_id (r : Api_types.Review.Decide_request.t
           ~outcome
           ()
       in
-      match verdict with
-      | `Approve ->
+      match verdict, review.status with
+      | `Approve, Pending ->
+        (* Four eyes: the first approval only records the operator. *)
+        let review =
+          { review with status = First_approval { operator; at = now }; notes }
+        in
+        let* () = Ctx.commit ctx [ Put_review review; audit "first_approval" ] in
+        ok ()
+      | `Approve, First_approval { operator = first; _ } when String.equal first operator
+        ->
+        fail
+          (Problem.conflict
+             "same_operator"
+             "a second, different operator must approve the release")
+      | `Approve, _ ->
         let record =
           { record with hold = Released { review = review_id }; updated_at = now }
         in
@@ -916,7 +929,7 @@ let decide_review (ctx : Ctx.t) review_id (r : Api_types.Review.Decide_request.t
         in
         push ctx record;
         ok ()
-      | `Reject ->
+      | `Reject, _ ->
         let* x =
           return
             (Problem.of_internal

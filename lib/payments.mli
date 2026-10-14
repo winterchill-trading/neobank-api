@@ -125,8 +125,9 @@ val apply_update
 
 val reviews : Ctx.t -> pending_only:bool -> Api_types.Review.t list Problem.res
 
-(** [approve] releases the transfer to SCA (or straight to the provider when exempt);
-    [reject] cancels it. *)
+(** Releasing a held transfer takes two approvals by different operators (four eyes); the
+    second releases it to SCA (or straight to the provider when exempt). One [reject]
+    cancels it. *)
 val decide_review
   :  Ctx.t
   -> string

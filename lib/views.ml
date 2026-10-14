@@ -303,7 +303,7 @@ let standing_order (o : Standing_order.t) =
   ; next_run = Date.to_string x.next_run
   ; status =
       (match o.provider_ref, o.provider_challenge, x.status with
-       | None, Some _, Active -> "awaiting_sca"
+       | _, Some _, Active -> "awaiting_sca"
        | None, None, Active -> "pending"
        | _, _, status ->
          lower_sexp [%sexp (status : Payments_core.Standing_order.Status.t)])

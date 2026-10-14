@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # libpq-dev builds the pg-async bindings; the server binaries run the throwaway
-      # clusters the store tests start.
+      # clusters the store tests start and the database of the curl walk below.
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpq-dev postgresql
       - uses: winterchill-trading/infra/.github/actions/ox-setup@main
         with:
@@ -23,7 +23,17 @@ jobs:
             risk-rules https://github.com/winterchill-trading/risk-rules.git
             banking-provider https://github.com/winterchill-trading/banking-provider.git
             pg-async https://github.com/winterchill-trading/pg-async.git
+      - run: shellcheck scripts/*.sh
       - run: opam exec -- dune build
       - run: opam exec -- dune test
+      - name: curl walk on the fake provider, memory store
+        run: scripts/ci-walk.sh memory
+      - name: curl walk on the fake provider, PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "CREATE ROLE neobank LOGIN PASSWORD 'neobank-ci'"
+          sudo -u postgres createdb -O neobank neobank
+          DATABASE_URL='postgres://neobank:neobank-ci@127.0.0.1:5432/neobank?sslmode=disable' \
+            scripts/ci-walk.sh postgres
   obj-magic:
     uses: winterchill-trading/infra/.github/workflows/obj-magic.yml@main

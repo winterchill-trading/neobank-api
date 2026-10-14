@@ -368,7 +368,7 @@ let%expect_test "the demo walk on the memory store" =
   [%expect
     {|
     me: 200 kyc.status=active kyc.tier=T2 accounts=6 sca_fresh=true
-    eur: 200 iban=DE97500105170000000001 balance.available.amount=1000.00
+    eur: 200 iban=DE19500105176811323460 balance.available.amount=1000.00
     swap quote: 201 status=quoted sell.amount=100.00 buy.amount=0.00166666 price=0.0000166666
     swap execute: 200 status=awaiting_sca provider_sca.factors=["otp"]
     provider code: 200 status=accepted
@@ -444,7 +444,7 @@ let%expect_test "the same walk on PostgreSQL" =
   [%expect
     {|
     me: 200 kyc.status=active kyc.tier=T2 accounts=6 sca_fresh=true
-    eur: 200 iban=DE97500105170000000001 balance.available.amount=1000.00
+    eur: 200 iban=DE19500105176811323460 balance.available.amount=1000.00
     swap quote: 201 status=quoted sell.amount=100.00 buy.amount=0.00166666 price=0.0000166666
     swap execute: 200 status=awaiting_sca provider_sca.factors=["otp"]
     provider code: 200 status=accepted

@@ -10,6 +10,7 @@
   cohttp-async
   banking-provider
   risk-rules
-  neobank-api)
+  neobank-api
+  neobank-api.striga)
  (preprocess
   (pps ppx_jane)))

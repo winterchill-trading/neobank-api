@@ -54,6 +54,8 @@
   card-core
   risk-rules
   banking-provider
+  striga-client
+  striga-provider
   pg-async
   (neobank-api-types
    (= :version))))

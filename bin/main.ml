@@ -120,8 +120,11 @@ let command =
                 ~state_dir
                 ())
          | `Striga ->
-           Deferred.Or_error.error_string
-             "the striga provider is not linked into this build yet"
+           Deferred.return
+             (Neobank_api_striga.Striga_bank.create
+                ~store
+                ~now:(fun () -> Time_ns.now ())
+                ())
        in
        let config =
          { Ctx.Config.default with

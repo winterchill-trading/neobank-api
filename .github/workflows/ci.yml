@@ -22,6 +22,8 @@ jobs:
             card-core https://github.com/winterchill-trading/card-core.git
             risk-rules https://github.com/winterchill-trading/risk-rules.git
             banking-provider https://github.com/winterchill-trading/banking-provider.git
+            striga-client https://github.com/winterchill-trading/striga-client.git
+            striga-provider https://github.com/winterchill-trading/striga-provider.git
             pg-async https://github.com/winterchill-trading/pg-async.git
       - run: shellcheck scripts/*.sh
       - run: opam exec -- dune build

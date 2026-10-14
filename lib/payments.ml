@@ -127,7 +127,11 @@ let account_address (a : Account.t) =
     | Iban { iban; _ } -> Some (P.Iban.to_string iban)
     | Lightning_node { node_id } -> Some node_id
     | Uk_account a -> Some (P.Uk_account.to_string a)
-    | Us_account a -> Some (P.Us_account.to_string a))
+    | Us_account a -> Some (P.Us_account.to_string a)
+    | Local { fields; _ } ->
+      (match List.Assoc.find fields "account_number" ~equal:String.equal with
+       | Some number -> Some number
+       | None -> Option.map (List.hd fields) ~f:snd))
   |> Option.value ~default:(Account_ref.to_string (Account.id a))
 ;;
 

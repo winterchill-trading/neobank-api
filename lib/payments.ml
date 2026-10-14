@@ -382,6 +382,21 @@ let create_transfer
            "insufficient_funds"
            "the available balance does not cover the amount and fee")
   in
+  let* () =
+    (* The travel rule refuses more than EUR 1000 to a self-hosted wallet whose ownership
+       was not proven; say so plainly instead of as a validation error. *)
+    match beneficiary.destination, wallet_provider, Ctx.eur_value ctx amount with
+    | Crypto _, None, Some eur
+      when Money.Amount.compare_value eur P.Travel_rule.self_hosted_threshold_eur
+           |> Result.ok
+           |> Option.exists ~f:(fun n -> n > 0) ->
+      fail
+        (Problem.unprocessable
+           "wallet_ownership_required"
+           "prove you control this wallet before sending more than EUR 1000 to it, or \
+            name the provider that hosts it")
+    | _ -> ok ()
+  in
   let* draft =
     validation
       (P.Transfer.draft

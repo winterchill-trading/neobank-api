@@ -163,6 +163,13 @@ let destination_text : Payments_core.Beneficiary.Destination.t -> string = funct
     ^ Redact.destination a.account_number
   | Us_account a ->
     Payments_core.Aba.to_string a.routing ^ " " ^ Redact.destination a.account_number
+  (* Local formats list bank identifiers first and the account last: only the last is
+     masked, as for sort codes and routing numbers. *)
+  | Local { scheme; fields } ->
+    (match List.rev fields with
+     | [] -> scheme
+     | (_, account) :: bank ->
+       String.concat ~sep:" " (List.rev_map bank ~f:snd @ [ Redact.destination account ]))
 ;;
 
 let beneficiary (b : Payments_core.Beneficiary.t) =

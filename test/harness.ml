@@ -20,9 +20,18 @@ type t =
 let start_time = Time_ns.of_string_with_utc_offset "2026-10-14 09:00:00Z"
 let ops_token = "ops-test-token"
 
-let with_api ?(store = Any_store.pack (module Store_memory) (Store_memory.create ())) f =
+let with_api
+  ?(store = Any_store.pack (module Store_memory) (Store_memory.create ()))
+  ?(ids = Ids.counter ())
+  ?state_dir
+  f
+  =
   Log.Global.set_output [];
-  let dir = Filename_unix.temp_dir "neobank-api" "test" in
+  let dir =
+    match state_dir with
+    | Some dir -> dir
+    | None -> Filename_unix.temp_dir "neobank-api" "test"
+  in
   let clock = Time_source.create ~now:start_time () in
   let bank =
     Bank.fake
@@ -34,7 +43,7 @@ let with_api ?(store = Any_store.pack (module Store_memory) (Store_memory.create
   in
   let ctx =
     Ctx.create
-      ~ids:(Ids.counter ())
+      ~ids
       ~time_source:(Time_source.read_only clock)
       ~config:
         { Ctx.Config.default with password_iterations = 1000; ops_token = Some ops_token }
@@ -66,11 +75,14 @@ let with_api ?(store = Any_store.pack (module Store_memory) (Store_memory.create
       Server.close server;
       let%bind () = Cohttp_async.Server.close http in
       Bank.close bank;
-      let%map (_ : Core_unix.Exit_or_signal.t) =
-        In_thread.run (fun () ->
-          Core_unix.system (sprintf "rm -rf %s" (Filename.quote dir)))
-      in
-      ())
+      match state_dir with
+      | Some _ -> return ()
+      | None ->
+        let%map (_ : Core_unix.Exit_or_signal.t) =
+          In_thread.run (fun () ->
+            Core_unix.system (sprintf "rm -rf %s" (Filename.quote dir)))
+        in
+        ())
 ;;
 
 (* The ledger restamps entries strictly increasing, so a frozen clock would collide; every

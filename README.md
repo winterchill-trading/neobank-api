@@ -61,7 +61,7 @@ under pg-async's advisory lock.
 | `-provider` | `fake` | `fake` or `striga` |
 | `-store` | `postgres` when `DATABASE_URL` is set, else `memory` | where application state lives |
 | `-database-url`, `DATABASE_URL`, `PG*` | | PostgreSQL target; TLS is required unless the URL says `sslmode=disable` |
-| `-state-dir` | `./state` | the fake bank's ledger journal (`state/journal`) |
+| `-state-dir` | `./state` | the fake bank's ledger journal (`state/journal`) and id counters (`state/fake-counters.sexp`) |
 | `-policy` | built in (`lib/risk_policy.ml`) | a `risk-rules` policy file |
 | `-allow-origin` | `http://localhost:8000` | CORS origins, repeatable, `*` for any |
 | `-fake-settlement` | `immediate` | fake: `immediate`, `manual` or `delayed:<seconds>` |
@@ -231,8 +231,10 @@ without `STRIGA_*`.
   always false).
 - Card authorizations and clearings are counted, not stored per card.
 - With the fake provider, the bank's own customers live in memory: restarting the API
-  over a kept database gives customers whose provider records are gone. Start with a
-  fresh database and state directory, or use `-store memory`.
+  over a kept database gives earlier customers whose provider records are gone. New
+  sign-ups work: the fake's id counters are saved in `-state-dir/fake-counters.sexp`
+  (after events and on every relay pass) and restored with a margin of 1000, so ids are
+  skipped after a restart, never reissued.
 
 ## Why separate
 

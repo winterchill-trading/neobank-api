@@ -157,13 +157,15 @@ call GET "/accounts/$EUR/statement" | json "d['closing']"
 curl -sSf "$API/accounts/$EUR/statement?format=csv" -H "authorization: Bearer $TOKEN" | head -5
 
 if [ -n "$OPS_TOKEN" ]; then
-  say "a 600.00 EUR payment is held for an operator, approved, then confirmed"
+  say "a 600.00 EUR payment is held for review, released by two operators, then confirmed"
   HELD=$(call POST /transfers "{\"account_id\":\"$EUR\",\"beneficiary_id\":\"$PAYEE\",
     \"amount\":{\"amount\":\"600.00\",\"currency\":\"EUR\"}}")
   echo "$HELD" | json "d['status']"
   HELD=$(echo "$HELD" | json "d['id']")
   REVIEW=$(ops GET /ops/review | json "[r['id'] for r in d if r['reference']=='$HELD'][0]")
-  ops POST "/ops/review/$REVIEW" '{"verdict":"approve","operator":"demo-operator"}' | json "d['status']"
+  # Releasing a held payment takes two different operators.
+  ops POST "/ops/review/$REVIEW" '{"verdict":"approve","operator":"operator-1"}' | json "d['status']"
+  ops POST "/ops/review/$REVIEW" '{"verdict":"approve","operator":"operator-2"}' | json "d['status']"
   STATE=$(call POST "/transfers/$HELD/confirm-sca" "{\"password\":\"$PASSWORD\",\"code\":\"$(totp "$SECRET" 1)\"}")
   if [ "$(echo "$STATE" | json "d.get('provider_sca') is not None")" = True ]; then
     call POST "/transfers/$HELD/confirm-sca" "{\"code\":\"$PROVIDER_CODE\"}" >/dev/null

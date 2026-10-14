@@ -181,13 +181,20 @@ let scenario t =
   let%bind r = get t "/ops/review" ~token:`Ops in
   show "review queue" r ~fields:[ "0.reference"; "0.severity"; "0.status" ];
   let review = str r.json "0.id" in
-  let%bind r =
+  let decide operator =
     post
       t
       ("/ops/review/" ^ review)
       ~token:`Ops
-      ~body:(`Assoc [ "verdict", `String "approve"; "operator", `String "op-1" ])
+      ~body:(`Assoc [ "verdict", `String "approve"; "operator", `String operator ])
   in
+  let%bind r = decide "op-1" in
+  show "first approval" r ~fields:[ "status"; "operator" ];
+  let%bind r = get t ("/transfers/" ^ held) in
+  show "still held" r ~fields:[ "status"; "message" ];
+  let%bind r = decide "op-1" in
+  show "same operator again" r ~fields:[ "error" ];
+  let%bind r = decide "op-2" in
   show "approved" r ~fields:[ "status"; "operator" ];
   let%bind r = get t ("/transfers/" ^ held) in
   show "released" r ~fields:[ "status"; "under_review"; "sca.factors" ];
@@ -375,7 +382,10 @@ let%expect_test "the demo walk on the memory store" =
     held: 202 status=under_review under_review=true message=under review sca=<none>
     ops without token: 401 error=not_operator
     review queue: 200 0.reference=tr-000012 0.severity=review 0.status=pending
-    approved: 200 status=approved operator=op-1
+    first approval: 200 status=awaiting_second_approval operator=op-1
+    still held: 200 status=under_review message=under review
+    same operator again: 409 error=same_operator
+    approved: 200 status=approved operator=op-2
     released: 200 status=awaiting_sca under_review=false sca.factors=["totp","password"]
     held payment: 200 status=settled
     card: 201 status=active kind=virtual masked_pan=**** 0001 10/29 limits.online=true
@@ -446,7 +456,10 @@ let%expect_test "the same walk on PostgreSQL" =
     held: 202 status=under_review under_review=true message=under review sca=<none>
     ops without token: 401 error=not_operator
     review queue: 200 0.reference=tr-000012 0.severity=review 0.status=pending
-    approved: 200 status=approved operator=op-1
+    first approval: 200 status=awaiting_second_approval operator=op-1
+    still held: 200 status=under_review message=under review
+    same operator again: 409 error=same_operator
+    approved: 200 status=approved operator=op-2
     released: 200 status=awaiting_sca under_review=false sca.factors=["totp","password"]
     held payment: 200 status=settled
     card: 201 status=active kind=virtual masked_pan=**** 0001 10/29 limits.online=true

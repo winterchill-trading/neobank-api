@@ -125,7 +125,9 @@ let account_address (a : Account.t) =
   List.find_map a.provider.addresses ~f:(function
     | Crypto { address; _ } -> Some (P.Crypto_address.address address)
     | Iban { iban; _ } -> Some (P.Iban.to_string iban)
-    | Lightning_node { node_id } -> Some node_id)
+    | Lightning_node { node_id } -> Some node_id
+    | Uk_account a -> Some (P.Uk_account.to_string a)
+    | Us_account a -> Some (P.Us_account.to_string a))
   |> Option.value ~default:(Account_ref.to_string (Account.id a))
 ;;
 
@@ -210,7 +212,13 @@ let pick_rail ~(account : Account.t) ~(beneficiary : P.Beneficiary.t) requested 
       | Sepa_credit | Sepa_instant -> fiat
       | Onchain _ | Lightning -> not fiat
       | Intraledger -> true
-      | Card_scheme -> false)
+      | Card_scheme -> false
+      (* Faster Payments is the default UK rail, standard ACH the default US one. *)
+      | Faster_payments ->
+        Money.Currency.equal (Account.currency account) Money.Currency.gbp
+      | Ach { same_day = false; _ } ->
+        Money.Currency.equal (Account.currency account) Money.Currency.usd
+      | Chaps | Bacs | Ach { same_day = true; _ } | Rtp | Fedwire -> false)
     |> Or_error.of_option
          ~error:(Error.of_string "no rail reaches this beneficiary from this account")
 ;;
@@ -421,7 +429,7 @@ let create_transfer
         { Risk_rules.Context.Wallet.self_hosted = Option.is_none wallet_provider
         ; ownership_verified = false
         }
-    | Bank_account _ | Lightning _ | Internal _ -> None
+    | Bank_account _ | Lightning _ | Internal _ | Uk_account _ | Us_account _ -> None
   in
   let* context =
     risk_context ctx ~customer ~case ~available:balance.available draft ~wallet

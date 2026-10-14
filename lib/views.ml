@@ -118,6 +118,9 @@ let rail_to_string : Payments_core.Rail.t -> string = function
   | Lightning -> "lightning"
   | Intraledger -> "intraledger"
   | Card_scheme -> "card"
+  (* payments-core's own names: faster_payments, chaps, bacs, ach:ppd, rtp, fedwire. *)
+  | (Faster_payments | Chaps | Bacs | Ach _ | Rtp | Fedwire) as r ->
+    Payments_core.Rail.to_string r
 ;;
 
 let rail_of_string s : Payments_core.Rail.t Or_error.t =
@@ -126,6 +129,10 @@ let rail_of_string s : Payments_core.Rail.t Or_error.t =
   | "sepa_instant" -> Ok Sepa_instant
   | "lightning" -> Ok Lightning
   | "intraledger" -> Ok Intraledger
+  | ("faster_payments" | "chaps" | "bacs" | "rtp" | "fedwire") as s ->
+    Ok (Payments_core.Rail.of_string s)
+  | s when String.is_prefix s ~prefix:"ach:" ->
+    Or_error.try_with (fun () -> Payments_core.Rail.of_string s)
   | s ->
     (match String.chop_prefix s ~prefix:"onchain:" with
      | Some network ->
@@ -148,6 +155,14 @@ let destination_text : Payments_core.Beneficiary.Destination.t -> string = funct
      | Invoice _ -> "lightning invoice"
      | Lnurl _ -> "lnurl")
   | Internal { account } -> account
+  (* Sort codes and routing numbers name a bank, not a person; the account number is
+     masked like an IBAN's tail. *)
+  | Uk_account a ->
+    Payments_core.Sort_code.to_string_hum a.sort_code
+    ^ " "
+    ^ Redact.destination a.account_number
+  | Us_account a ->
+    Payments_core.Aba.to_string a.routing ^ " " ^ Redact.destination a.account_number
 ;;
 
 let beneficiary (b : Payments_core.Beneficiary.t) =
@@ -165,7 +180,9 @@ let beneficiary (b : Payments_core.Beneficiary.t) =
         | Match -> "match"
         | Close_match _ -> "close_match"
         | No_match -> "no_match"
-        | Not_possible -> "not_possible")
+        | Not_possible -> "not_possible"
+        | Account_not_found -> "account_not_found"
+        | Unavailable -> "unavailable")
   ; created_at = time b.first_seen
   }
 ;;

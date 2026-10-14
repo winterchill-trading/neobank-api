@@ -1,0 +1,17 @@
+(library
+ (name neobank_api_striga)
+ (public_name neobank-api.striga)
+ (libraries
+  core
+  async
+  async_kernel
+  money
+  payments-core
+  card-core
+  kyc-core
+  banking-provider
+  striga-client
+  striga-provider
+  neobank-api)
+ (preprocess
+  (pps ppx_jane)))

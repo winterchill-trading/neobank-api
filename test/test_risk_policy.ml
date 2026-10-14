@@ -17,11 +17,11 @@ let%expect_test "the default policy loads and covers every account currency" =
     printf "%s %d\n" code mentions);
   [%expect
     {|
-    EUR 10
-    BTC 8
-    BTC@lightning 6
-    ETH 6
-    USDC 8
-    USDT 8
+    EUR 11
+    BTC 9
+    BTC@lightning 9
+    ETH 9
+    USDC 9
+    USDT 9
     |}]
 ;;

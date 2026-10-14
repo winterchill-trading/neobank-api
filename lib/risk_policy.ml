@@ -1,8 +1,10 @@
 open! Core
 
 (* Amounts are "<decimal> <currency>" with every fractional digit of the currency. A
-   currency missing from a list is capped at zero, so every list names all six. Above the
-   first cap a payment is held for an operator; above the second it is refused. *)
+   currency missing from a list is a limit of zero (risk-rules fails closed), so every
+   list names all six; only structuring's threshold is EUR alone, because a currency
+   without one never matches there. Above the first cap a payment is held for an operator;
+   above the second it is refused. *)
 let default_text =
   {|((all_tiers
   ((Blocked_countries (KP IR SY CU))
@@ -14,16 +16,24 @@ let default_text =
     (margin_bps 500)
     (min_count 3)
     (window 7d))
-   (Mule_pass_through (window 1h) (min_incoming ("200.00 EUR")))
+   (Mule_pass_through
+    (window 1h)
+    (min_incoming
+     ("200.00 EUR" "0.00300000 BTC" "0.060000000000000000 ETH" "200.000000 USDC"
+      "200.000000 USDT" "0.00300000000 BTC@lightning")))
    (New_beneficiary_cooldown
     (cooldown 24h)
-    (above ("2500.00 EUR" "0.05000000 BTC" "2500.000000 USDC" "2500.000000 USDT")))
+    (above
+     ("2500.00 EUR" "0.05000000 BTC" "1.000000000000000000 ETH" "2500.000000 USDC"
+      "2500.000000 USDT" "0.05000000000 BTC@lightning")))
    (Severity Block
     (Account_takeover (recent 24h) (min_signals 4) (balance_share_bps 9000)))
    (App_first_large_payment (new_within 48h))
    Vop_not_matched
    (Unverified_self_hosted_wallet
-    (above ("0.01000000 BTC" "1000.000000 USDC" "1000.000000 USDT")))
+    (above
+     ("1000.00 EUR" "0.01000000 BTC" "0.300000000000000000 ETH" "1000.000000 USDC"
+      "1000.000000 USDT" "0.01000000000 BTC@lightning")))
    (Sca_tra (scheme Credit_transfer) (observed_fraud_rate_ppm 40))))
  (tiers
   ((basic

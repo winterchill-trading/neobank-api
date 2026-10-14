@@ -433,7 +433,8 @@ let create_transfer
         { Risk_rules.Context.Wallet.self_hosted = Option.is_none wallet_provider
         ; ownership_verified = false
         }
-    | Bank_account _ | Lightning _ | Internal _ | Uk_account _ | Us_account _ -> None
+    | Bank_account _ | Lightning _ | Internal _ | Uk_account _ | Us_account _ | Local _ ->
+      None
   in
   let* context =
     risk_context ctx ~customer ~case ~available:balance.available draft ~wallet

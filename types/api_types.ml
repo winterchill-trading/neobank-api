@@ -330,6 +330,23 @@ module Card = struct
     [@@deriving sexp, compare, equal, yojson] [@@yojson.allow_extra_fields]
   end
 
+  module Display = struct
+    type t =
+      { provider : string
+      ; script_url : string option [@default None] [@yojson_drop_if Option.is_none]
+      ; application_id : string option [@default None] [@yojson_drop_if Option.is_none]
+      ; ui_secret : string option [@default None] [@yojson_drop_if Option.is_none]
+      ; user_id : string option [@default None] [@yojson_drop_if Option.is_none]
+      ; card_id : string
+      }
+    [@@deriving sexp, compare, equal, yojson] [@@yojson.allow_extra_fields]
+  end
+
+  module Consent_request = struct
+    type t = { challenge_id : string }
+    [@@deriving sexp, compare, equal, yojson] [@@yojson.allow_extra_fields]
+  end
+
   type t =
     { id : string
     ; account_id : string

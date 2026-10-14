@@ -337,6 +337,26 @@ module Card : sig
     [@@deriving sexp, compare, equal, yojson]
   end
 
+  (** What the browser needs to show the card number in the provider's hosted component.
+      [provider] names the component ([fake] has none, and no other field is set);
+      [ui_secret] only drives the provider's iframe after an OTP consent. *)
+  module Display : sig
+    type t =
+      { provider : string
+      ; script_url : string option
+      ; application_id : string option
+      ; ui_secret : string option
+      ; user_id : string option (** the provider's user id *)
+      ; card_id : string (** the provider's card id *)
+      }
+    [@@deriving sexp, compare, equal, yojson]
+  end
+
+  (** The challenge id the provider's browser component got from its consent request. *)
+  module Consent_request : sig
+    type t = { challenge_id : string } [@@deriving sexp, compare, equal, yojson]
+  end
+
   type t =
     { id : string
     ; account_id : string

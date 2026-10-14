@@ -32,6 +32,8 @@ POST   /cards                          auth   Card.Issue_request -> 201 Card
 POST   /cards/:id/freeze|unfreeze      auth   -> Card
 POST   /cards/:id/limits               auth*  Card.Limits -> Card
 POST   /cards/:id/pan-token            auth*  -> Card.Pan_token | 202 Sca_required
+GET    /cards/:id/display              auth*  -> Card.Display (the provider component's options)
+POST   /cards/:id/consent              auth*  Card.Consent_request -> Sca_info (answer on /sca/:id)
 GET    /standing-orders                auth
 POST   /standing-orders                auth*  Standing_order.Request -> 201 Standing_order
 DELETE /standing-orders/:id            auth   -> Standing_order (also POST .../cancel)

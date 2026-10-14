@@ -38,6 +38,19 @@ val pan_token
   -> [ `Token of Api_types.Card.Pan_token.t | `Challenge of Api_types.Sca_info.t ]
        Problem.res
 
+(** The options for the provider's hosted card-number component (fresh SCA). *)
+val display : Ctx.t -> Session.t -> string -> Api_types.Card.Display.t Problem.res
+
+(** The browser component started a consent (the provider sent the cardholder a code); the
+    challenge to answer with [POST /sca/:id], after which [pan-token] returns the token.
+    Fresh SCA. *)
+val consent
+  :  Ctx.t
+  -> Session.t
+  -> string
+  -> Api_types.Card.Consent_request.t
+  -> Api_types.Sca_info.t Problem.res
+
 (** A card's status as the provider reported it. *)
 val status_changed
   :  Ctx.t

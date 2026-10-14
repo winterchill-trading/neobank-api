@@ -184,6 +184,49 @@ let pan_token (ctx : Ctx.t) (s : Session.t) id =
     ok (`Challenge (Views.provider_challenge (Provider_challenge.of_provider c)))
 ;;
 
+let display (ctx : Ctx.t) (s : Session.t) id =
+  let* () = Auth.require_fresh_sca ctx s in
+  let* card = owned ctx s.customer id in
+  let* d = Deferred.map (Bank.card_display ctx.bank card.id) ~f:Problem.of_provider in
+  let* () =
+    Ctx.commit
+      ctx
+      [ Ctx.audit
+          ctx
+          ~actor:("customer:" ^ Customer_id.to_string s.customer)
+          ~action:"card.display"
+          ~object_id:id
+          ~outcome:"ok"
+          ()
+      ]
+  in
+  ok
+    { Api_types.Card.Display.provider = d.provider
+    ; script_url = d.script_url
+    ; application_id = d.application_id
+    ; (* Meant for the browser component, which only drives the provider's iframe after
+         the cardholder's OTP consent; this answer is where it is handed out. *)
+      ui_secret = Option.map d.ui_secret ~f:Banking_provider.Sensitive.reveal
+    ; user_id = d.user_id
+    ; card_id = d.card_id
+    }
+;;
+
+let consent (ctx : Ctx.t) (s : Session.t) id (r : Api_types.Card.Consent_request.t) =
+  let* () = Auth.require_fresh_sca ctx s in
+  let* card = owned ctx s.customer id in
+  let* c =
+    Deferred.map
+      (Bank.card_consent_started ctx.bank card.id ~challenge_id:r.challenge_id)
+      ~f:Problem.of_provider
+  in
+  Hashtbl.set
+    ctx.provider_challenges
+    ~key:(Payments_core.Sca.Id.to_string c.id)
+    ~data:(s.customer, c.purpose);
+  ok (Views.provider_challenge (Provider_challenge.of_provider c))
+;;
+
 let status_changed (ctx : Ctx.t) id status =
   match%bind Ctx.read (Any_store.card ctx.store id) with
   | Error p -> fail p

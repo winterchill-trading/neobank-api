@@ -364,6 +364,15 @@ let route t (r : request) : route =
       let* body = decode A.Card.Limits.t_of_yojson r in
       let* c = Cards.set_limits ctx s id body in
       reply (A.Card.yojson_of_t c))
+  | `GET, [ "cards"; id; "display" ] ->
+    get "/cards/:id/display" (fun s ->
+      let* d = Cards.display ctx s id in
+      reply (A.Card.Display.yojson_of_t d))
+  | `POST, [ "cards"; id; "consent" ] ->
+    post "/cards/:id/consent" (fun s ->
+      let* body = decode A.Card.Consent_request.t_of_yojson r in
+      let* c = Cards.consent ctx s id body in
+      reply (A.Sca_info.yojson_of_t c))
   | `POST, [ "cards"; id; "pan-token" ] ->
     post "/cards/:id/pan-token" (fun s ->
       match%bind Cards.pan_token ctx s id with

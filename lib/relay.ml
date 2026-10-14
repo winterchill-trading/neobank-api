@@ -3,7 +3,11 @@ open Async
 open Model
 
 let backoff ~attempts ~max =
-  let doubling = Float.( ** ) 2. (Float.of_int (Int.max 0 (attempts - 1))) in
+  (* The exponent is capped: a message retried all day reaches a few hundred attempts, and
+     2^300 seconds does not fit a span (a quickcheck property found this). *)
+  let doubling =
+    Float.( ** ) 2. (Float.of_int (Int.clamp_exn (attempts - 1) ~min:0 ~max:30))
+  in
   Time_ns.Span.min max (Time_ns.Span.scale (Time_ns.Span.of_sec 1.) doubling)
 ;;
 

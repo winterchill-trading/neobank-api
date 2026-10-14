@@ -464,6 +464,45 @@ let route t (r : request) : route =
       with
       idempotent = false
     }
+  | `GET, [ "ops"; "ledger" ] ->
+    { (operator "/ops/ledger" (fun () ->
+         let* head = Ctx.read (Any_store.ledger_head ctx.store) in
+         let* trial = Ctx.read (Any_store.ledger_trial_balance ctx.store) in
+         reply
+           (`Assoc
+             [ "head", `Int head
+             ; ( "trial_balance"
+               , json_list (fun a -> A.Amount.yojson_of_t (Views.amount a)) trial )
+             ; "balanced", `Bool (List.for_all trial ~f:Money.Amount.is_zero)
+             ])))
+      with
+      idempotent = false
+    }
+  | `GET, [ "ops"; "ledger"; "postings" ] ->
+    { (operator "/ops/ledger/postings" (fun () ->
+         match query r "account" with
+         | None -> fail (Problem.bad_request "invalid_request" "account is required")
+         | Some account ->
+           let* postings = Ctx.read (Any_store.ledger_postings ctx.store ~account) in
+           reply
+             (json_list
+                (fun (p : Ledger_posting.t) ->
+                  `Assoc
+                    [ "seq", `Int p.seq
+                    ; "line", `Int p.line
+                    ; ( "side"
+                      , `String
+                          (String.lowercase
+                             (Sexp.to_string [%sexp (p.side : Ledger.Side.t)])) )
+                    ; "amount", A.Amount.yojson_of_t (Views.amount p.amount)
+                    ; "code", `String p.code
+                    ; "reference", `String p.reference
+                    ; "recorded_at", `String (Views.time p.recorded_at)
+                    ])
+                postings)))
+      with
+      idempotent = false
+    }
   | `GET, [ "ops"; "audit" ] ->
     { (operator "/ops/audit" (fun () ->
          let* log = Ctx.read (Any_store.audit_log ctx.store) in

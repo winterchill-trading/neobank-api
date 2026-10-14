@@ -42,6 +42,8 @@ GET    /ops/review                     ops    ?all=true -> Review list
 POST   /ops/review/:id                 ops    Review.Decide_request -> Review
 GET    /ops/outbox                     ops    ?state=needs_review|pending|sent
 GET    /ops/audit                      ops    chain check and the latest records
+GET    /ops/ledger                     ops    projected head and trial balance
+GET    /ops/ledger/postings            ops    ?account=<ledger account id>
 POST   /sandbox/kyc-decision|deposit|card-auth|transfer-outcome   auth (sandbox only)
     v}
 

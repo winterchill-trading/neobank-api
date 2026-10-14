@@ -331,6 +331,8 @@ let scenario t =
    | _ -> ());
   let%bind r = get t "/ops/audit" ~token:`Ops in
   show "audit" r ~fields:[ "chain" ];
+  let%bind r = get t "/ops/ledger" ~token:`Ops in
+  show "ledger" r ~fields:[ "balanced"; "trial_balance" ];
   let%bind r = get t "/transfers" in
   (match r.json with
    | `List l ->
@@ -400,6 +402,7 @@ let%expect_test "the demo walk on the memory store" =
       -12.50 CAPTURE 14857.50
       -10.00 CAPTURE 14847.50
     audit: 200 chain=ok
+    ledger: 200 balanced=true trial_balance=[{"amount":"0.00000000","currency":"BTC"},{"amount":"0.00","currency":"EUR"}]
       out 10.00 sepa settled
       out 6000.00 sepa settled
       out 16000.00 sepa cancelled
@@ -470,6 +473,7 @@ let%expect_test "the same walk on PostgreSQL" =
       -12.50 CAPTURE 14857.50
       -10.00 CAPTURE 14847.50
     audit: 200 chain=ok
+    ledger: 200 balanced=true trial_balance=[{"amount":"0.00000000","currency":"BTC"},{"amount":"0.00","currency":"EUR"}]
       out 10.00 sepa settled
       out 6000.00 sepa settled
       out 16000.00 sepa cancelled

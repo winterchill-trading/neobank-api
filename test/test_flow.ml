@@ -243,6 +243,15 @@ let scenario t =
   show "unfreeze" r ~fields:[ "status" ];
   let%bind r = auth () in
   show "purchase" r ~fields:[ "response_code"; "approved" ];
+  let%bind r = get t ("/cards/" ^ card ^ "/display") in
+  show "display" r ~fields:[ "provider"; "card_id"; "ui_secret" ];
+  let%bind r =
+    post
+      t
+      ("/cards/" ^ card ^ "/consent")
+      ~body:(`Assoc [ "challenge_id", `String "from-the-browser" ])
+  in
+  show "consent" r ~fields:[ "factors" ];
   let%bind r = post t ("/cards/" ^ card ^ "/pan-token") in
   show "pan token" r ~fields:[ "error"; "challenge.factors" ];
   let%bind (_ : response) =
@@ -394,6 +403,8 @@ let%expect_test "the demo walk on the memory store" =
     purchase while frozen: 200 response_code=57 approved=false
     unfreeze: 200 status=active
     purchase: 200 response_code=00 approved=true
+    display: 200 provider=fake card_id=card_000001 ui_secret=<none>
+    consent: 200 factors=["otp"]
     pan token: 202 error=sca_required challenge.factors=["otp"]
     ("pan token" (status 200) (has_token true))
     limits, stale SCA: 403 error=sca_required
@@ -468,6 +479,8 @@ let%expect_test "the same walk on PostgreSQL" =
     purchase while frozen: 200 response_code=57 approved=false
     unfreeze: 200 status=active
     purchase: 200 response_code=00 approved=true
+    display: 200 provider=fake card_id=card_000001 ui_secret=<none>
+    consent: 200 factors=["otp"]
     pan token: 202 error=sca_required challenge.factors=["otp"]
     ("pan token" (status 200) (has_token true))
     limits, stale SCA: 403 error=sca_required

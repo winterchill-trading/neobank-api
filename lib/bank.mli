@@ -28,6 +28,10 @@ val fake
   -> unit
   -> t Or_error.t
 
+(** The ledger journal the bank books into, when the API keeps it (the fake's books);
+    {!Ledger_projection} copies it into the store for queries. *)
+val journal : t -> Ledger.Journal.t option
+
 (** The fake's own handle, when the bank is the fake (tests, demo tools). *)
 val as_fake : t -> Fake_provider.t option
 

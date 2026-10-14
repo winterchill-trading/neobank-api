@@ -8,12 +8,13 @@ type t =
       ; sandbox : (module Sandbox.S with type t = 'a) option
       ; provider : 'a
       ; fake : Fake_provider.t option
+      ; journal : Ledger.Journal.t option
       ; on_close : unit -> unit
       }
       -> t
 
 let of_provider impl ?sandbox provider =
-  T { impl; sandbox; provider; fake = None; on_close = Fn.id }
+  T { impl; sandbox; provider; fake = None; journal = None; on_close = Fn.id }
 ;;
 
 let fake ?config ~time_source ~state_dir () =
@@ -31,11 +32,13 @@ let fake ?config ~time_source ~state_dir () =
     ; sandbox = Some (module Fake_provider)
     ; provider
     ; fake = Some provider
+    ; journal = Some journal
     ; on_close = (fun () -> Ledger.Journal.close journal)
     }
 ;;
 
 let as_fake (T t) = t.fake
+let journal (T t) = t.journal
 let name (T { impl = (module P); provider; _ }) = P.name provider
 let has_sandbox (T t) = Option.is_some t.sandbox
 let close (T t) = t.on_close ()

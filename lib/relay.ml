@@ -60,7 +60,11 @@ let pass (ctx : Ctx.t) =
   | Error e ->
     Log.Global.error_s [%message "outbox read failed" (e : Error.t)];
     return ()
-  | Ok messages -> Deferred.List.iter ~how:`Sequential messages ~f:(process ctx)
+  | Ok messages ->
+    let%bind () = Deferred.List.iter ~how:`Sequential messages ~f:(process ctx) in
+    (match%map Ledger_projection.catch_up ctx with
+     | Ok (_ : int) -> ()
+     | Error e -> Log.Global.error_s [%message "ledger projection failed" (e : Error.t)])
 ;;
 
 let prune (ctx : Ctx.t) =

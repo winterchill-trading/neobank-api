@@ -9,8 +9,8 @@
     (customer, transfer, swap, standing order) and the handlers skip work that is already
     done.
 
-    The relay also prunes idempotency keys (24 h), inbox rows (30 days) and idle sessions,
-    hourly. *)
+    Each pass also brings the ledger projection up to date ({!Ledger_projection}). The
+    relay prunes idempotency keys (24 h), inbox rows (30 days) and idle sessions, hourly. *)
 
 open! Core
 open Async

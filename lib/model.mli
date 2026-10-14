@@ -401,6 +401,29 @@ module Inbox_entry : sig
   val of_event : Banking_provider.Event.t -> received_at:Time_ns.t -> t
 end
 
+(** One line of a projected ledger entry: the query form of the journal under
+    [-state-dir], which stays the system of record. *)
+module Ledger_posting : sig
+  type t =
+    { seq : int (** the journal record *)
+    ; line : int (** within the record *)
+    ; entry_key : string
+    ; account : string
+    ; side : Ledger.Side.t
+    ; amount : Money.Amount.t (** positive; [side] carries the direction *)
+    ; code : string (** e.g. [DEPOSIT], [CARD_SETTLEMENT] *)
+    ; reference : string
+    ; recorded_at : Utc_time.t
+    }
+  [@@deriving sexp, compare, equal]
+
+  (** Every posting of every entry the record books, numbered in order. *)
+  val of_record : Ledger.Record.t -> t list
+
+  (** Debits minus credits. *)
+  val signed : t -> Money.Amount.t
+end
+
 (** API idempotency keys: a key is scoped to (customer, method, route, key) and bound to
     the SHA-256 of the canonical request body. *)
 module Idempotency : sig

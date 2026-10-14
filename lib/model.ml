@@ -414,6 +414,49 @@ module Inbox_entry = struct
   ;;
 end
 
+module Ledger_posting = struct
+  type t =
+    { seq : int
+    ; line : int
+    ; entry_key : string
+    ; account : string
+    ; side : Ledger.Side.t
+    ; amount : Money.Amount.t
+    ; code : string
+    ; reference : string
+    ; recorded_at : Utc_time.t
+    }
+  [@@deriving sexp, compare, equal]
+
+  let of_record (r : Ledger.Record.t) =
+    List.concat_map (Ledger.Record.entries r) ~f:(fun (e : Ledger.Entry.t) ->
+      List.map e.postings ~f:(fun (p : Ledger.Posting.t) ->
+        ( Ledger.Idempotency_key.to_string e.idempotency_key
+        , Ledger.Entry.Code.to_string e.code
+        , e.reference
+        , e.recorded_at
+        , p )))
+    |> List.mapi
+         ~f:(fun line (entry_key, code, reference, recorded_at, (p : Ledger.Posting.t)) ->
+           { seq = r.seq
+           ; line
+           ; entry_key
+           ; account = Ledger.Account_id.to_string p.account
+           ; side = p.side
+           ; amount = p.amount
+           ; code
+           ; reference
+           ; recorded_at
+           })
+  ;;
+
+  let signed t =
+    match t.side with
+    | Debit -> t.amount
+    | Credit -> Money.Amount.neg t.amount
+  ;;
+end
+
 module Idempotency = struct
   module Scope = struct
     type t =

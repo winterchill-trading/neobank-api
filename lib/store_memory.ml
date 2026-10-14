@@ -35,6 +35,7 @@ type t =
   ; inbox : Inbox_entry.t String.Table.t
   ; idempotency : idem String.Table.t
   ; mutable audit : Audit.t list (* newest first *)
+  ; ledger : Ledger_posting.t list Int.Table.t (* by journal seq *)
   ; mutable seq : int
   }
 
@@ -58,6 +59,7 @@ let create () =
   ; inbox = String.Table.create ()
   ; idempotency = String.Table.create ()
   ; audit = []
+  ; ledger = Int.Table.create ()
   ; seq = 0
   }
 ;;
@@ -133,7 +135,8 @@ let check t writes =
       | Put_standing_order _
       | Put_review _
       | Enqueue _
-      | Audit _ -> Continue ())
+      | Audit _
+      | Ledger_record _ -> Continue ())
 ;;
 
 let apply t (w : Write.t) =
@@ -175,6 +178,9 @@ let apply t (w : Write.t) =
   | Enqueue m | Update_outbox m -> put_aged t t.outbox m.id m
   | Inbox e ->
     Hashtbl.set t.inbox ~key:(Banking_provider.Event_id.to_string e.event_id) ~data:e
+  | Ledger_record r ->
+    if not (Hashtbl.mem t.ledger r.seq)
+    then Hashtbl.set t.ledger ~key:r.seq ~data:(Ledger_posting.of_record r)
   | Audit record ->
     let prev_hash, seq =
       match t.audit with
@@ -346,6 +352,39 @@ let idempotency_abandon t scope =
 ;;
 
 let audit_log t = found (List.rev t.audit)
+
+let ledger_head t =
+  found
+    (Hashtbl.keys t.ledger |> List.max_elt ~compare:Int.compare |> Option.value ~default:0)
+;;
+
+let all_postings t =
+  Hashtbl.to_alist t.ledger
+  |> List.sort ~compare:(fun (a, _) (b, _) -> Int.compare a b)
+  |> List.concat_map ~f:snd
+;;
+
+let ledger_postings t ~account =
+  found
+    (List.filter (all_postings t) ~f:(fun (p : Ledger_posting.t) ->
+       String.equal p.account account))
+;;
+
+let ledger_trial_balance t =
+  let sums = String.Table.create () in
+  List.iter (all_postings t) ~f:(fun p ->
+    let signed = Ledger_posting.signed p in
+    Hashtbl.update
+      sums
+      (Money.Currency.to_string (Money.Amount.currency signed))
+      ~f:(function
+        | None -> signed
+        | Some sum -> Money.Amount.add_exn sum signed));
+  found
+    (Hashtbl.to_alist sums
+     |> List.sort ~compare:(fun (a, _) (b, _) -> String.compare a b)
+     |> List.map ~f:snd)
+;;
 
 let prune t ~idempotency_before ~inbox_before ~sessions_before =
   let drop table ~f =

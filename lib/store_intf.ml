@@ -38,6 +38,9 @@ module Write = struct
     | Inbox of Inbox_entry.t
     (** the batch is a [Duplicate_event] when this event id was applied before *)
     | Audit of Audit.Record.t (** appended to the hash chain *)
+    | Ledger_record of Ledger.Record.t
+    (** a journal record and its postings, projected for queries; a sequence number
+        already projected is skipped *)
   [@@deriving sexp_of]
 end
 
@@ -179,6 +182,18 @@ module type S = sig
   (** Forgets a key whose request was not executed (it failed validation), so a corrected
       retry may use it. *)
   val idempotency_abandon : t -> Idempotency.Scope.t -> unit Or_error.t Deferred.t
+
+  (** {2 Ledger projection} *)
+
+  (** The last journal sequence number projected, 0 for none. *)
+  val ledger_head : t -> int Or_error.t Deferred.t
+
+  (** One account's postings, in journal order. *)
+  val ledger_postings : t -> account:string -> Ledger_posting.t list Or_error.t Deferred.t
+
+  (** Debits minus credits per currency over every projected posting: all zero when the
+      books balance. Ordered by currency code. *)
+  val ledger_trial_balance : t -> Money.Amount.t list Or_error.t Deferred.t
 
   (** The whole chain, oldest first. *)
   val audit_log : t -> Audit.t list Or_error.t Deferred.t

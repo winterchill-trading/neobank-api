@@ -348,6 +348,45 @@ let apply_write conn (w : Write.t) : (unit, stop) Result.t Deferred.t =
              [%message
                "provider event id reused with different content"
                  ~event_id:(e.event_id : Banking_provider.Event_id.t)]))
+  | Ledger_record r ->
+    let%bind n =
+      exec
+        conn
+        "INSERT INTO ledger_records (seq, recorded_at, body) VALUES ($1, $2, $3) ON \
+         CONFLICT (seq) DO NOTHING"
+        [ Param.int r.seq
+        ; utc (Ledger.Record.Event.recorded_at r.event)
+        ; Param.bytea (encode Ledger.Record.Stable.V1.bin_writer_t r)
+        ]
+    in
+    if n = 0
+    then return ()
+    else
+      Deferred.List.fold (Ledger_posting.of_record r) ~init:(Ok ()) ~f:(fun acc p ->
+        match acc with
+        | Error _ -> Deferred.return acc
+        | Ok () ->
+          let signed = Ledger_posting.signed p in
+          exec
+            conn
+            "INSERT INTO ledger_postings (seq, line, entry_key, account_id, side, \
+             currency, amount_minor, code, reference, recorded_at) VALUES ($1, $2, $3, \
+             $4, $5, $6, $7, $8, $9, $10)"
+            [ Param.int p.seq
+            ; Param.int p.line
+            ; Param.string p.entry_key
+            ; Param.string p.account
+            ; Param.string
+                (match p.side with
+                 | Debit -> "debit"
+                 | Credit -> "credit")
+            ; Param.string (Money.Currency.to_string (Money.Amount.currency signed))
+            ; Param.numeric (Z.to_string (Money.Amount.minor_units signed))
+            ; Param.string p.code
+            ; Param.string p.reference
+            ; utc p.recorded_at
+            ]
+          |> ignore_count)
   | Audit record ->
     (* One writer at a time extends the chain: the transaction-scoped advisory lock (key:
        "audit" in ASCII) serializes appends, so two never share a predecessor. *)
@@ -727,6 +766,81 @@ let idempotency_abandon t scope =
           t.pool
           "DELETE FROM idempotency WHERE scope = $1"
           ~params:[ Param.string (Idempotency.Scope.to_string scope) ]))
+;;
+
+let ledger_head t =
+  let%map.Deferred.Or_error head =
+    fetch_opt
+      t
+      "SELECT max(seq) AS head FROM ledger_records"
+      ~params:[]
+      ~row:Row.(column "head" (Type.nullable Type.int))
+  in
+  Option.value (Option.join head) ~default:0
+;;
+
+let amount_of ~currency ~minor =
+  let open Result.Let_syntax in
+  let%bind currency =
+    Money.Currency.of_string_or_error currency |> Result.map_error ~f:Error.to_string_hum
+  in
+  let%map minor =
+    Result.try_with (fun () -> Z.of_string minor) |> Result.map_error ~f:Exn.to_string
+  in
+  Money.Amount.of_minor_units currency minor
+;;
+
+let ledger_postings t ~account =
+  fetch_all
+    t
+    "SELECT seq, line, entry_key, account_id, side, currency, amount_minor::text AS \
+     amount_minor, code, reference, recorded_at FROM ledger_postings WHERE account_id = \
+     $1 ORDER BY seq, line"
+    ~params:[ Param.string account ]
+    ~row:
+      (let open Row.Let_syntax in
+       let%map_open seq = column "seq" int
+       and line = column "line" int
+       and entry_key = column "entry_key" string
+       and account = column "account_id" string
+       and side = column "side" string
+       and currency = column "currency" string
+       and minor = column "amount_minor" string
+       and code = column "code" string
+       and reference = column "reference" string
+       and recorded_at = column "recorded_at" time_ns in
+       let amount =
+         amount_of ~currency ~minor |> Result.ok_or_failwith |> Money.Amount.abs
+       in
+       { Ledger_posting.seq
+       ; line
+       ; entry_key
+       ; account
+       ; side = (if String.equal side "debit" then Debit else Credit)
+       ; amount
+       ; code
+       ; reference
+       ; recorded_at
+       })
+;;
+
+let ledger_trial_balance t =
+  let%bind.Deferred.Or_error rows =
+    fetch_all
+      t
+      "SELECT currency, sum(amount_minor)::text AS total FROM ledger_postings GROUP BY \
+       currency ORDER BY currency COLLATE \"C\""
+      ~params:[]
+      ~row:
+        (let open Row.Let_syntax in
+         let%map_open currency = column "currency" string
+         and total = column "total" string in
+         currency, total)
+  in
+  Deferred.return
+    (List.map rows ~f:(fun (currency, minor) ->
+       amount_of ~currency ~minor |> Result.map_error ~f:Error.of_string)
+     |> Result.all)
 ;;
 
 let audit_log t =

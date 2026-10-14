@@ -215,11 +215,9 @@ without `STRIGA_*`.
 
 ## Known gaps
 
-- `-provider striga` is written and compiles (branch `striga-provider`: the adapter
-  over striga-provider with its links in `provider_links` and the card component's
-  options from `STRIGA_*`), but is not on `main`: the pushed striga-provider still
-  includes `Provider.Sandbox`, which banking-provider renamed to `Sandbox.S`. Merge the
-  branch once striga-provider follows.
+- `-provider striga` is wired (striga-provider adapter, links in `provider_links`, card
+  component options from `STRIGA_*`) and checked to start against the sandbox
+  (`/healthz`); the live walk is run separately.
 - KYC screening and risk rating are not run by the API: the demo KYC policy trusts the
   provider's decision for them (`Ctx.Config.demo_kyc_policy`).
 - Personal data in KYC events is stored as Bin_prot without per-customer encryption.

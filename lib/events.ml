@@ -220,9 +220,8 @@ let ingest_webhook (ctx : Ctx.t) request =
 ;;
 
 let drain () =
-  (* The consumer below reads the provider's pipe in its own Async jobs; once no job is
-     left, every event published so far is queued on the sequencer, behind which this
-     waits. *)
+  (* The consumer below queues each event on the sequencer as it reads it; once no Async
+     job is left, every event published so far is queued, and this waits behind them. *)
   let%bind () = Scheduler.yield_until_no_jobs_remain () in
   Throttle.enqueue sequencer (fun () -> return ())
 ;;
@@ -230,11 +229,14 @@ let drain () =
 let start (ctx : Ctx.t) =
   ctx.drain <- drain;
   let events = Bank.events ctx.bank in
+  (* Each event is queued on the sequencer as soon as it is read, so [drain] can wait
+     behind everything published so far. *)
   don't_wait_for
-    (Pipe.iter events ~f:(fun e ->
-       match%map apply ctx e with
-       | Ok (`Applied | `Duplicate) -> don't_wait_for (ctx.kick ())
-       | Error err ->
-         Log.Global.error_s [%message "provider event failed" (err : Error.t)]));
+    (Pipe.iter_without_pushback events ~f:(fun e ->
+       don't_wait_for
+         (match%map apply ctx e with
+          | Ok (`Applied | `Duplicate) -> don't_wait_for (ctx.kick ())
+          | Error err ->
+            Log.Global.error_s [%message "provider event failed" (err : Error.t)])));
   fun () -> Pipe.close_read events
 ;;

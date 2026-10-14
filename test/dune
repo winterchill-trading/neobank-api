@@ -19,7 +19,6 @@
   banking-provider
   pg-async
   pg-async.testing
-  expect_test_helpers_core)
  (inline_tests
   (flags
    (:standard -source-tree-root .)))

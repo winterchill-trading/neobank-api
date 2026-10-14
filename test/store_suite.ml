@@ -361,6 +361,71 @@ let run (type a) (module S : Store.S with type t = a) (store : a) =
                 else a))
            : unit Or_error.t)
       }];
+  (* Ledger projection: records from a real journal, projected once. *)
+  let records =
+    let dir = Filename_unix.temp_dir "neobank-store" "ledger" in
+    let clock = Async_kernel.Time_source.create ~now:start () in
+    let journal =
+      Ledger.Journal.create
+        ~time_source:(Async_kernel.Time_source.read_only clock)
+        ~fsync:false
+        (dir ^/ "journal")
+      |> ok_exn
+    in
+    let account id kind ?allow_negative () =
+      Ledger.Journal.open_account
+        journal
+        (Ledger.Account.create ?allow_negative (Ledger.Account_id.of_string id) kind)
+      |> ok_exn
+      |> ignore
+    in
+    account "cash" Asset ~allow_negative:true ();
+    account "customer:c1/eur" Liability ();
+    let book key amount =
+      Async_kernel.Time_source.advance_directly
+        clock
+        ~to_:(Time_ns.add (Async_kernel.Time_source.now clock) (Time_ns.Span.of_sec 1.));
+      let a = eur amount in
+      Ledger.Journal.transfer
+        journal
+        ~idempotency_key:(Ledger.Idempotency_key.of_string key)
+        ~code:Deposit
+        ~reference:key
+        ~effective_at:(Async_kernel.Time_source.now clock)
+        [ Ledger.Posting.debit (Ledger.Account_id.of_string "cash") a
+        ; Ledger.Posting.credit (Ledger.Account_id.of_string "customer:c1/eur") a
+        ]
+      |> ok_exn
+      |> ignore
+    in
+    book "dep-1" "100.00";
+    book "dep-2" "25.50";
+    let records = Ledger.Journal.records journal in
+    Ledger.Journal.close journal;
+    Core_unix.system (sprintf "rm -rf %s" (Filename.quote dir)) |> ignore;
+    records
+  in
+  let%bind head_before = ok (S.ledger_head store) in
+  let%bind () =
+    commit "project" (List.map records ~f:(fun r -> Store.Write.Ledger_record r))
+  in
+  let%bind () =
+    commit "project again" (List.map records ~f:(fun r -> Store.Write.Ledger_record r))
+  in
+  let%bind head = ok (S.ledger_head store) in
+  let%bind postings = ok (S.ledger_postings store ~account:"customer:c1/eur") in
+  let%bind trial = ok (S.ledger_trial_balance store) in
+  show
+    "ledger"
+    [%sexp
+      { head_before : int
+      ; head : int
+      ; postings =
+          (List.map postings ~f:(fun p ->
+             p.seq, p.line, p.code, p.side, Money.Amount.to_string p.amount, p.recorded_at)
+           : (int * int * string * Ledger.Side.t * string * Payments_core.Utc_time.t) list)
+      ; trial = (List.map trial ~f:Money.Amount.to_string : string list)
+      }];
   (* Pruning *)
   let%bind pruned =
     ok

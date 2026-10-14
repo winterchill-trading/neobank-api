@@ -113,7 +113,8 @@ Every `POST` except `/auth/*` and `/webhooks/*` needs an `Idempotency-Key` heade
    replayed.
 2. `Block`: refused (422 `payment_refused`, with risk-rules' customer message), stored
    as `Cancelled`. `Review`: held (202, `under_review`, message "under review"; the
-   customer never sees reasons) and queued for `/ops/review`. Otherwise an SCA challenge
+   customer never sees reasons) and queued for `/ops/review`, where two different
+   operators must approve the release (four eyes) and one may reject it. Otherwise an SCA challenge
    bound to amount, currency and payee (password and authenticator code; the RTS
    article is recorded instead when risk-rules grants an exemption).
 3. `POST /transfers/:id/confirm-sca` checks both factors; a wrong answer never says
@@ -217,7 +218,6 @@ tests until `-provider striga` is wired (see Known gaps).
 - KYC screening and risk rating are not run by the API: the demo KYC policy trusts the
   provider's decision for them (`Ctx.Config.demo_kyc_policy`).
 - Personal data in KYC events is stored as Bin_prot without per-customer encryption.
-- Releasing a held payment takes one operator, not two (four-eyes is not enforced).
 - Per-record locks are per process: run one API instance (several instances would need
   optimistic versions on the records).
 - Provider challenges answered through `/sca/:id` are remembered in memory; after a
